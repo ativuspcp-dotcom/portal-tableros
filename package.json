@@ -1,0 +1,19 @@
+{
+  "name": "portal-tableros",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "vite": "^8.0.12"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.106.2",
+    "node-fetch": "^3.3.2",
+    "pg": "^8.21.0"
+  }
+}
