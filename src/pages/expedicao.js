@@ -424,7 +424,7 @@ async function fetchPedidos() {
         U_cod_mun: p.U_cod_mun || p["'U_cod_mun'"]
       }));
       // Filter the ones with U_atv_prod == null or 1
-      pedidosCache = normalized.filter(p => p.U_atv_prod == null || p.U_atv_prod === 1 || p.U_atv_prod === '1');
+      pedidosCache = normalized.filter(p => p.U_atv_prod == 1);
     }
   } catch(e) { console.error('Error fetching Pedidos', e); }
   return pedidosCache;
