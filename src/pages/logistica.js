@@ -6,8 +6,8 @@ import { getBPLID } from '../auth/auth.js';
 import { showToast } from '../components/toast.js';
 import { openModal, closeModal } from '../components/modal.js';
 
-let activeMainTab = 'cadastros'; // 'cadastros', 'painel'
-let activeSubTab = 'empresas'; // 'empresas', 'placas', 'motoristas'
+let activeMainTab = sessionStorage.getItem('logisticaActiveMainTab') || 'cadastros'; // 'cadastros', 'painel'
+let activeSubTab = sessionStorage.getItem('logisticaActiveSubTab') || 'empresas'; // 'empresas', 'placas', 'motoristas'
 let dataCache = {
   empresas: [],
   placas: [],
@@ -118,6 +118,7 @@ function bindLogisticaEvents() {
   mainTabBtns.forEach(btn => {
     btn.addEventListener('click', (e) => {
       activeMainTab = e.currentTarget.dataset.tab;
+      sessionStorage.setItem('logisticaActiveMainTab', activeMainTab);
       renderLogistica();
     });
   });
@@ -126,6 +127,7 @@ function bindLogisticaEvents() {
   subTabBtns.forEach(btn => {
     btn.addEventListener('click', (e) => {
       activeSubTab = e.currentTarget.dataset.subtab;
+      sessionStorage.setItem('logisticaActiveSubTab', activeSubTab);
       renderLogistica();
     });
   });

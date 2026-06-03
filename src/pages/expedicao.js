@@ -7,8 +7,8 @@ import { showToast } from '../components/toast.js';
 import { confirmDialog } from '../components/modal.js';
 
 // State
-let activeMainTab = 'ordem_carregamento'; // 'dashboard', 'ordem_carregamento'
-let activeSubTab = 'remessa_armazem'; // 'remessa_armazem'
+let activeMainTab = sessionStorage.getItem('expedicaoActiveMainTab') || 'ordem_carregamento'; // 'dashboard', 'ordem_carregamento'
+let activeSubTab = sessionStorage.getItem('expedicaoActiveSubTab') || 'remessa_armazem'; // 'remessa_armazem'
 
 let remessasCache = [];
 let remessasStatusFilter = 'Todas';
@@ -214,6 +214,8 @@ function bindExpedicaoEvents() {
       if (targetTab !== activeMainTab) {
         activeMainTab = targetTab;
         if (activeMainTab === 'ordem_carregamento') activeSubTab = 'remessa_armazem';
+        sessionStorage.setItem('expedicaoActiveMainTab', activeMainTab);
+        sessionStorage.setItem('expedicaoActiveSubTab', activeSubTab);
         renderExpedicao();
       }
     });
@@ -225,6 +227,7 @@ function bindExpedicaoEvents() {
       const targetSubTab = e.currentTarget.dataset.subtab;
       if (targetSubTab !== activeSubTab) {
         activeSubTab = targetSubTab;
+        sessionStorage.setItem('expedicaoActiveSubTab', activeSubTab);
         renderExpedicao();
       }
     });
