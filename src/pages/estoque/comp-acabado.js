@@ -3,6 +3,7 @@ import { supabase } from '../../config/supabase.js';
 let estoqueCompAcabado = [];
 let filteredEstoque = [];
 let localFilter = '';
+let searchFilter = '';
 
 const qualidadeOrder = {
   '-': 1,
@@ -42,11 +43,18 @@ export function applyEstoqueFilters() {
     localFilter = localSelect.value;
   }
 
-  if (!localFilter) {
-    filteredEstoque = estoqueCompAcabado;
-  } else {
-    filteredEstoque = estoqueCompAcabado.filter(item => item.local_estoque === localFilter);
+  const searchInput = document.getElementById('search-estoque');
+  if (searchInput) {
+    searchFilter = searchInput.value.toLowerCase().trim();
   }
+
+  filteredEstoque = estoqueCompAcabado.filter(item => {
+    const matchLocal = !localFilter || item.local_estoque === localFilter;
+    const matchSearch = !searchFilter || 
+      (item.cod_item && item.cod_item.toLowerCase().includes(searchFilter)) || 
+      (item.nome_item && item.nome_item.toLowerCase().includes(searchFilter));
+    return matchLocal && matchSearch;
+  });
 
   renderEstoqueDashboard();
 }
@@ -65,6 +73,10 @@ export function renderEstoqueCompAcabadoView() {
 export function renderEstoqueDashboard() {
   const container = document.getElementById('estoque-dashboard-container');
   if (!container) return;
+
+  const searchInputActive = document.activeElement && document.activeElement.id === 'search-estoque';
+  const cursorStart = searchInputActive ? document.activeElement.selectionStart : 0;
+  const cursorEnd = searchInputActive ? document.activeElement.selectionEnd : 0;
 
   const locais = [...new Set(estoqueCompAcabado.map(i => i.local_estoque).filter(Boolean))].sort();
 
@@ -115,6 +127,10 @@ export function renderEstoqueDashboard() {
     <!-- Toolbar -->
     <div class="toolbar" style="margin-bottom: var(--space-4); display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; justify-content: space-between;">
       <div class="toolbar-left" style="display: flex; flex-wrap: wrap; gap: var(--space-2); flex: 1;">
+        <div class="search-box" style="position: relative; width: 300px; max-width: 100%;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--color-text-secondary);"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <input type="text" id="search-estoque" class="form-input" placeholder="Buscar por código ou descrição..." value="${searchFilter.replace(/"/g, '&quot;')}" style="padding-left: 32px; font-size: var(--font-size-sm); height: 34px; width: 100%;">
+        </div>
         <select class="filter-select" id="filter-local-estoque" style="font-size: var(--font-size-sm); height: 34px;">
           <option value="">Todos os Locais</option>
           ${locais.map(l => `<option value="${l}" ${localFilter === l ? 'selected' : ''}>${l}</option>`).join('')}
@@ -172,6 +188,14 @@ export function renderEstoqueDashboard() {
       </div>
     </div>
   `;
+
+  if (searchInputActive) {
+    const newSearchInput = document.getElementById('search-estoque');
+    if (newSearchInput) {
+      newSearchInput.focus();
+      newSearchInput.setSelectionRange(cursorStart, cursorEnd);
+    }
+  }
 
   bindEstoqueCompAcabadoEvents();
 }
@@ -239,6 +263,13 @@ export function bindEstoqueCompAcabadoEvents() {
   const filterLocal = document.getElementById('filter-local-estoque');
   if (filterLocal) {
     filterLocal.addEventListener('change', () => {
+      applyEstoqueFilters();
+    });
+  }
+
+  const searchInput = document.getElementById('search-estoque');
+  if (searchInput) {
+    searchInput.addEventListener('input', () => {
       applyEstoqueFilters();
     });
   }
