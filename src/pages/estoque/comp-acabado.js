@@ -104,7 +104,7 @@ export function renderEstoqueDashboard() {
             ${data.fardos} <span style="font-size: var(--font-size-xs); font-weight: normal; color: var(--color-text-secondary);">caixas</span>
           </div>
           <div style="font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--color-primary); margin-top: 4px;">
-            ${data.m3.toFixed(3)} m³
+            ${data.m3.toFixed(3).replace('.', ',')} m³
           </div>
         </div>
       </div>
@@ -141,7 +141,7 @@ export function renderEstoqueDashboard() {
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
           Volume Total (m³)
         </h4>
-        <div style="font-size: var(--font-size-3xl); font-weight: var(--font-weight-bold); color: var(--color-text);">${totalM3.toFixed(3)} m³</div>
+        <div style="font-size: var(--font-size-3xl); font-weight: var(--font-weight-bold); color: var(--color-text);">${totalM3.toFixed(3).replace('.', ',')} m³</div>
       </div>
     </div>
 
@@ -230,7 +230,7 @@ function renderEstoqueItemTable() {
       <td style="font-weight: var(--font-weight-medium); color: var(--color-text);">${data.nome || '-'}</td>
       <td><span class="badge" style="${badgeStyle}">${qualDisplay}</span></td>
       <td style="text-align: right; font-weight: var(--font-weight-semibold);">${data.fardos}</td>
-      <td style="text-align: right; color: var(--color-primary); font-weight: var(--font-weight-semibold);">${data.m3.toFixed(3)}</td>
+      <td style="text-align: right; color: var(--color-primary); font-weight: var(--font-weight-semibold);">${data.m3.toFixed(3).replace('.', ',')}</td>
     </tr>
   `}).join('');
 }
