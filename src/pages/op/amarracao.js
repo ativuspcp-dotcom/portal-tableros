@@ -209,7 +209,7 @@ async function fetchSAPItems() {
   if (sapItemsCache.length > 0) return sapItemsCache;
   try {
     const url = "/api/Items?$select=ItemCode,ItemName,ForeignName,ItemsGroupCode,SalesFactor1,SalesFactor2,SalesFactor3,SalesFactor4,U_Quality&$filter=ItemsGroupCode eq 106 and Properties1 eq 'tYES'";
-    const res = await fetch(url, { headers: { 'ngrok-skip-browser-warning': 'true' } });
+    const res = await fetch(url, { headers: { 'ngrok-skip-browser-warning': 'true', 'Prefer': 'odata.maxpagesize=0' } });
     if (res.ok) {
       const data = await res.json();
       sapItemsCache = data.value || [];
@@ -222,7 +222,7 @@ async function fetchPedidos() {
   if (pedidosCache.length > 0) return pedidosCache;
   try {
     const url = "/api/SQLQueries('ContratoME')/List";
-    const res = await fetch(url, { headers: { 'ngrok-skip-browser-warning': 'true' } });
+    const res = await fetch(url, { headers: { 'ngrok-skip-browser-warning': 'true', 'Prefer': 'odata.maxpagesize=0' } });
     if (res.ok) {
       const data = await res.json();
       pedidosCache = data.value || [];
