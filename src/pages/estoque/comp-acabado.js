@@ -310,6 +310,38 @@ function printEstoqueReport() {
   const totalFardos = filteredEstoque.length;
   const totalM3 = filteredEstoque.reduce((acc, curr) => acc + (parseFloat(curr.total_calc) || 0), 0);
   
+  const byQualidade = filteredEstoque.reduce((acc, curr) => {
+    const qual = curr.qualidade || 'N/A';
+    if (!acc[qual]) acc[qual] = { fardos: 0, m3: 0 };
+    acc[qual].fardos++;
+    acc[qual].m3 += parseFloat(curr.total_calc) || 0;
+    return acc;
+  }, {});
+
+  const qualCardsHtml = Object.entries(byQualidade).sort((a,b) => {
+    const qualA = (a[0] === 'N/A' || !a[0]) ? '-' : a[0];
+    const qualB = (b[0] === 'N/A' || !b[0]) ? '-' : b[0];
+    return getQualidadeWeight(qualA) - getQualidadeWeight(qualB);
+  }).map(([qual, data]) => {
+    const qualDisplay = (qual === 'N/A' || !qual) ? '-' : qual;
+    const badgeStyle = qualDisplay !== '-' 
+      ? (qual === 'BG' ? 'background: #dcfce7; color: #166534; border: 1px solid #bbf7d0;'
+        : qual === 'SG' ? 'background: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe;'
+        : 'background: #fef3c7; color: #b45309; border: 1px solid #fde68a;')
+      : 'background: #f3f4f6; color: #374151; border: 1px solid #e5e7eb;';
+      
+    return `
+      <div class="kpi-card" style="text-align: left;">
+        <div class="kpi-label" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+          Qualidade
+          <span style="${badgeStyle} padding: 1px 4px; border-radius: 4px; font-size: 9px;">${qualDisplay}</span>
+        </div>
+        <div style="font-size: 16px; font-weight: bold; color: #111;">${data.fardos} <span style="font-size: 10px; font-weight: normal; color: #666;">cx</span></div>
+        <div style="font-size: 12px; color: #2563eb; font-weight: bold; margin-top: 2px;">${data.m3.toFixed(3).replace('.', ',')} m³</div>
+      </div>
+    `;
+  }).join('');
+  
   const rows = getGroupedItemsForTable();
   const rowsHtml = rows.map((data) => {
     const qualDisplay = (data.qualidade === 'N/A' || !data.qualidade) ? '-' : data.qualidade;
@@ -349,10 +381,10 @@ function printEstoqueReport() {
           .title-box h1 { margin: 0; font-size: 22px; text-transform: uppercase; letter-spacing: 1px; color: #111; }
           .title-box h2 { margin: 4px 0 0; font-size: 14px; font-weight: 500; color: #555; }
           
-          .kpi-row { display: flex; gap: 15px; margin-bottom: 30px; }
-          .kpi-card { border: 1px solid #d1d5db; border-radius: 6px; padding: 15px; flex: 1; text-align: center; background: #f9fafb; }
-          .kpi-value { font-size: 24px; font-weight: bold; color: #2563eb; margin-bottom: 4px; }
-          .kpi-label { font-size: 11px; color: #4b5563; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+          .kpi-row { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
+          .kpi-card { border: 1px solid #d1d5db; border-radius: 4px; padding: 8px 12px; flex: 1; min-width: 120px; background: #f9fafb; page-break-inside: avoid; }
+          .kpi-value { font-size: 18px; font-weight: bold; color: #2563eb; margin-bottom: 2px; }
+          .kpi-label { font-size: 10px; color: #4b5563; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
           
           table { width: 100%; border-collapse: collapse; font-size: 12px; }
           th { text-align: left; padding: 8px 10px; background: #f3f4f6; border-bottom: 2px solid #ccc; color: #333; font-weight: 700; text-transform: uppercase; font-size: 10px; letter-spacing: 0.5px; }
@@ -374,14 +406,15 @@ function printEstoqueReport() {
         </div>
 
         <div class="kpi-row">
-          <div class="kpi-card">
+          <div class="kpi-card" style="border-left: 3px solid #2563eb; display: flex; flex-direction: column; justify-content: center;">
+            <div class="kpi-label" style="margin-bottom: 4px;">Total Fardos</div>
             <div class="kpi-value">${totalFardos}</div>
-            <div class="kpi-label">Total Caixas / Fardos</div>
           </div>
-          <div class="kpi-card">
-            <div class="kpi-value">${totalM3.toFixed(3).replace('.', ',')} m³</div>
-            <div class="kpi-label">Volume Total (m³)</div>
+          <div class="kpi-card" style="border-left: 3px solid #2563eb; display: flex; flex-direction: column; justify-content: center;">
+            <div class="kpi-label" style="margin-bottom: 4px;">Volume (m³)</div>
+            <div class="kpi-value">${totalM3.toFixed(3).replace('.', ',')}</div>
           </div>
+          ${qualCardsHtml}
         </div>
 
         <table>
