@@ -45,36 +45,53 @@ export function closeModal() {
 /**
  * Open a confirmation dialog
  */
-export function confirmDialog(title, message, onConfirm, options = {}) {
-  const type = options.type || 'danger';
-  const confirmText = options.confirmText || 'Confirmar';
-  const cancelText = options.cancelText || 'Cancelar';
+export function confirmDialog(title, message, arg3, arg4) {
+  return new Promise((resolve) => {
+    let onConfirm = null;
+    let options = {};
 
-  const icons = {
-    danger: '⚠',
-    warning: '⚠',
-    info: 'ℹ'
-  };
+    if (typeof arg3 === 'function') {
+      onConfirm = arg3;
+      options = arg4 || {};
+    } else if (typeof arg3 === 'object') {
+      options = arg3 || {};
+    }
 
-  const bodyHTML = `
-    <div class="confirm-body">
-      <div class="confirm-icon" style="${type === 'danger' ? '' : 'background: var(--color-warning-bg); color: var(--color-warning);'}">
-        ${icons[type]}
+    const type = options.type || 'danger';
+    const confirmText = options.confirmText || 'Confirmar';
+    const cancelText = options.cancelText || 'Cancelar';
+
+    const icons = {
+      danger: '⚠',
+      warning: '⚠',
+      info: 'ℹ'
+    };
+
+    const bodyHTML = `
+      <div class="confirm-body">
+        <div class="confirm-icon" style="${type === 'danger' ? '' : 'background: var(--color-warning-bg); color: var(--color-warning);'}">
+          ${icons[type]}
+        </div>
+        <p>${message}</p>
       </div>
-      <p>${message}</p>
-    </div>
-  `;
+    `;
 
-  const footerHTML = `
-    <button class="btn btn-secondary" id="confirm-cancel">${cancelText}</button>
-    <button class="btn btn-${type}" id="confirm-ok">${confirmText}</button>
-  `;
+    const footerHTML = `
+      <button class="btn btn-secondary" id="confirm-cancel">${cancelText}</button>
+      <button class="btn btn-${type}" id="confirm-ok">${confirmText}</button>
+    `;
 
-  openModal(title, bodyHTML, footerHTML, { maxWidth: '420px' });
+    openModal(title, bodyHTML, footerHTML, { maxWidth: '420px' });
 
-  document.getElementById('confirm-cancel').addEventListener('click', closeModal);
-  document.getElementById('confirm-ok').addEventListener('click', () => {
-    closeModal();
-    onConfirm();
+    document.getElementById('confirm-cancel').addEventListener('click', () => {
+      closeModal();
+      resolve(false);
+    });
+
+    document.getElementById('confirm-ok').addEventListener('click', () => {
+      closeModal();
+      if (onConfirm) onConfirm();
+      resolve(true);
+    });
   });
 }
