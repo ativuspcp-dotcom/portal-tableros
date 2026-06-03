@@ -405,7 +405,7 @@ export async function fetchRemessas() {
 async function fetchPedidos() {
   if (pedidosCache.length > 0) return pedidosCache;
   try {
-    const url = "/api/SQLQueries('ContratoME')/List";
+    const url = "/api/SQLQueries('ContratoME_temp')/List";
     const res = await fetch(url, { headers: { 'ngrok-skip-browser-warning': 'true' } });
     if (res.ok) {
       const data = await res.json();
