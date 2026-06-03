@@ -4,6 +4,22 @@ let estoqueCompAcabado = [];
 let filteredEstoque = [];
 let localFilter = '';
 
+const qualidadeOrder = {
+  '-': 1,
+  'N/A': 1,
+  '': 1,
+  'BG': 2,
+  'SG': 3,
+  '1ª PERMUTA': 4,
+  '2ª QUALIDADE': 5,
+  '3ª QUALIDADE': 6
+};
+
+function getQualidadeWeight(qual) {
+  const q = qual ? qual.toUpperCase().trim() : '-';
+  return qualidadeOrder[q] || 99;
+}
+
 export async function fetchEstoqueCompAcabado() {
   try {
     const { data, error } = await supabase
@@ -64,11 +80,23 @@ export function renderEstoqueDashboard() {
     return acc;
   }, {});
 
-  const qualityCards = Object.entries(byQualidade).sort((a,b) => b[1].m3 - a[1].m3).map(([qual, data]) => `
+  const qualityCards = Object.entries(byQualidade).sort((a,b) => {
+    const qualA = (a[0] === 'N/A' || !a[0]) ? '-' : a[0];
+    const qualB = (b[0] === 'N/A' || !b[0]) ? '-' : b[0];
+    return getQualidadeWeight(qualA) - getQualidadeWeight(qualB);
+  }).map(([qual, data]) => {
+    const qualDisplay = (qual === 'N/A' || !qual) ? '-' : qual;
+    const badgeStyle = qualDisplay !== '-' 
+      ? (qual === 'BG' ? 'background: rgba(34, 197, 94, 0.15); color: #16a34a; border: 1px solid rgba(34, 197, 94, 0.3);'
+        : qual === 'SG' ? 'background: rgba(59, 130, 246, 0.15); color: #2563eb; border: 1px solid rgba(59, 130, 246, 0.3);'
+        : 'background: rgba(245, 158, 11, 0.15); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.3);')
+      : 'background: var(--color-surface-alt); color: var(--color-text-secondary); border: 1px solid var(--color-border);';
+
+    return `
     <div class="card" style="padding: var(--space-4); border-color: var(--color-border); background: var(--color-surface); flex: 1; min-width: 200px;">
       <h4 style="font-size: var(--font-size-sm); color: var(--color-text-secondary); margin-bottom: var(--space-2); display: flex; align-items: center; justify-content: space-between;">
         Qualidade
-        <span class="badge" style="background: var(--color-surface-alt); border: 1px solid var(--color-border); color: var(--color-text);">${qual}</span>
+        <span class="badge" style="${badgeStyle}">${qualDisplay}</span>
       </h4>
       <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: var(--space-3);">
         <div>
@@ -81,7 +109,7 @@ export function renderEstoqueDashboard() {
         </div>
       </div>
     </div>
-  `).join('');
+  `}).join('');
 
   container.innerHTML = `
     <!-- Toolbar -->
@@ -150,11 +178,15 @@ export function renderEstoqueDashboard() {
 
 function renderEstoqueItemTable() {
   const byItem = filteredEstoque.reduce((acc, curr) => {
-    const key = curr.cod_item || 'N/A';
+    const cod = curr.cod_item || 'N/A';
+    const qual = curr.qualidade || 'N/A';
+    const key = `${cod}_${qual}`;
+    
     if (!acc[key]) {
       acc[key] = {
+        cod: cod,
         nome: curr.nome_item,
-        qualidade: curr.qualidade || 'N/A',
+        qualidade: qual,
         fardos: 0,
         m3: 0
       };
@@ -164,21 +196,43 @@ function renderEstoqueItemTable() {
     return acc;
   }, {});
 
-  const rows = Object.entries(byItem).sort((a,b) => b[1].m3 - a[1].m3);
+  const rows = Object.values(byItem).sort((a,b) => {
+    const qualA = (a.qualidade === 'N/A' || !a.qualidade) ? '-' : a.qualidade;
+    const qualB = (b.qualidade === 'N/A' || !b.qualidade) ? '-' : b.qualidade;
+    
+    const weightA = getQualidadeWeight(qualA);
+    const weightB = getQualidadeWeight(qualB);
+    
+    if (weightA !== weightB) {
+      return weightA - weightB;
+    }
+
+    const nomeA = (a.nome || '').toLowerCase();
+    const nomeB = (b.nome || '').toLowerCase();
+    return nomeA.localeCompare(nomeB);
+  });
 
   if (rows.length === 0) {
     return `<tr><td colspan="5" style="text-align: center; padding: var(--space-8); color: var(--color-text-secondary);">Nenhum detalhe disponível.</td></tr>`;
   }
 
-  return rows.map(([cod, data]) => `
+  return rows.map((data) => {
+    const qualDisplay = (data.qualidade === 'N/A' || !data.qualidade) ? '-' : data.qualidade;
+    const badgeStyle = qualDisplay !== '-' 
+      ? (data.qualidade === 'BG' ? 'background: rgba(34, 197, 94, 0.15); color: #16a34a; border: 1px solid rgba(34, 197, 94, 0.3);'
+        : data.qualidade === 'SG' ? 'background: rgba(59, 130, 246, 0.15); color: #2563eb; border: 1px solid rgba(59, 130, 246, 0.3);'
+        : 'background: rgba(245, 158, 11, 0.15); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.3);')
+      : 'background: var(--color-surface-alt); color: var(--color-text-secondary); border: 1px solid var(--color-border);';
+
+    return `
     <tr>
-      <td style="font-family: monospace; font-weight: var(--font-weight-semibold); color: var(--color-text);">${cod}</td>
+      <td style="font-family: monospace; font-weight: var(--font-weight-semibold); color: var(--color-text);">${data.cod}</td>
       <td style="font-weight: var(--font-weight-medium); color: var(--color-text);">${data.nome || '-'}</td>
-      <td><span class="badge" style="background: var(--color-surface-alt); color: var(--color-text-secondary);">${data.qualidade}</span></td>
+      <td><span class="badge" style="${badgeStyle}">${qualDisplay}</span></td>
       <td style="text-align: right; font-weight: var(--font-weight-semibold);">${data.fardos}</td>
       <td style="text-align: right; color: var(--color-primary); font-weight: var(--font-weight-semibold);">${data.m3.toFixed(3)}</td>
     </tr>
-  `).join('');
+  `}).join('');
 }
 
 export function bindEstoqueCompAcabadoEvents() {
