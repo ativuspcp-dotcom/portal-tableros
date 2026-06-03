@@ -499,7 +499,7 @@ async function loadDataAndBindForm(opEdit = null) {
   if (selPedido) {
     const pedidosFiltrados = pedidos.filter(p => {
       const val = p.U_atv_prod !== undefined ? p.U_atv_prod : p["'U_atv_prod'"];
-      return val === "1" || val === null || val === undefined;
+      return val == 1 || val == null;
     });
     selPedido.innerHTML = `<option value="">Selecione um pedido pendente...</option>` + 
       pedidosFiltrados.map(p => `<option value="${p.AbsID}">${p["'Numero'"] || p.Numero} - ${p["'NomePN'"] || p.NomePN} (${p.ItemCode})</option>`).join('');
