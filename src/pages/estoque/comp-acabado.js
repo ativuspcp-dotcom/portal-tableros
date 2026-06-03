@@ -136,7 +136,10 @@ export function renderEstoqueDashboard() {
           ${locais.map(l => `<option value="${l}" ${localFilter === l ? 'selected' : ''}>${l}</option>`).join('')}
         </select>
       </div>
-      <div class="toolbar-right">
+      <div class="toolbar-right" style="display: flex; gap: var(--space-2);">
+        <button class="btn btn-secondary btn-sm btn-icon" id="btn-print-estoque" title="Imprimir Relatório" style="width: 34px; height: 34px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+        </button>
         <button class="btn btn-secondary btn-sm btn-icon" id="btn-refresh-estoque" title="Atualizar Estoque" style="width: 34px; height: 34px;">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><polyline points="3 3 3 8 8 8"></polyline></svg>
         </button>
@@ -200,7 +203,7 @@ export function renderEstoqueDashboard() {
   bindEstoqueCompAcabadoEvents();
 }
 
-function renderEstoqueItemTable() {
+function getGroupedItemsForTable() {
   const byItem = filteredEstoque.reduce((acc, curr) => {
     const cod = curr.cod_item || 'N/A';
     const qual = curr.qualidade || 'N/A';
@@ -220,7 +223,7 @@ function renderEstoqueItemTable() {
     return acc;
   }, {});
 
-  const rows = Object.values(byItem).sort((a,b) => {
+  return Object.values(byItem).sort((a,b) => {
     const qualA = (a.qualidade === 'N/A' || !a.qualidade) ? '-' : a.qualidade;
     const qualB = (b.qualidade === 'N/A' || !b.qualidade) ? '-' : b.qualidade;
     
@@ -235,6 +238,10 @@ function renderEstoqueItemTable() {
     const nomeB = (b.nome || '').toLowerCase();
     return nomeA.localeCompare(nomeB);
   });
+}
+
+function renderEstoqueItemTable() {
+  const rows = getGroupedItemsForTable();
 
   if (rows.length === 0) {
     return `<tr><td colspan="5" style="text-align: center; padding: var(--space-8); color: var(--color-text-secondary);">Nenhum detalhe disponível.</td></tr>`;
@@ -283,4 +290,123 @@ export function bindEstoqueCompAcabadoEvents() {
       });
     });
   }
+
+  const btnPrint = document.getElementById('btn-print-estoque');
+  if (btnPrint) {
+    btnPrint.addEventListener('click', () => {
+      printEstoqueReport();
+    });
+  }
+}
+
+function printEstoqueReport() {
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) {
+    alert('Por favor, permita pop-ups para gerar o relatório.');
+    return;
+  }
+
+  const now = new Date().toLocaleString('pt-BR');
+  const totalFardos = filteredEstoque.length;
+  const totalM3 = filteredEstoque.reduce((acc, curr) => acc + (parseFloat(curr.total_calc) || 0), 0);
+  
+  const rows = getGroupedItemsForTable();
+  const rowsHtml = rows.map((data) => {
+    const qualDisplay = (data.qualidade === 'N/A' || !data.qualidade) ? '-' : data.qualidade;
+    const badgeStyle = qualDisplay !== '-' 
+      ? (data.qualidade === 'BG' ? 'background: #dcfce7; color: #166534; border: 1px solid #bbf7d0;'
+        : data.qualidade === 'SG' ? 'background: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe;'
+        : 'background: #fef3c7; color: #b45309; border: 1px solid #fde68a;')
+      : 'background: #f3f4f6; color: #374151; border: 1px solid #e5e7eb;';
+      
+    return `
+    <tr>
+      <td style="font-family: monospace; border-bottom: 1px solid #e5e7eb; padding: 6px 10px;">${data.cod}</td>
+      <td style="border-bottom: 1px solid #e5e7eb; padding: 6px 10px;">${data.nome || '-'}</td>
+      <td style="border-bottom: 1px solid #e5e7eb; padding: 6px 10px;"><span style="${badgeStyle} padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 600;">${qualDisplay}</span></td>
+      <td style="text-align: right; border-bottom: 1px solid #e5e7eb; padding: 6px 10px;">${data.fardos}</td>
+      <td style="text-align: right; color: #2563eb; font-weight: bold; border-bottom: 1px solid #e5e7eb; padding: 6px 10px;">${data.m3.toFixed(3).replace('.', ',')}</td>
+    </tr>
+    `;
+  }).join('') || '<tr><td colspan="5" style="text-align: center; padding: 20px;">Nenhum item encontrado.</td></tr>';
+
+  const html = `
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+      <head>
+        <meta charset="UTF-8">
+        <title>Relatório de Estoque - Comp. Acabado</title>
+        <style>
+          @media print {
+            @page { size: A4; margin: 10mm; }
+            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; zoom: 0.9; }
+          }
+          body { font-family: 'Segoe UI', 'Inter', system-ui, sans-serif; color: #111827; margin: 0; padding: 20px; line-height: 1.3; }
+          
+          .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #222; padding-bottom: 12px; margin-bottom: 20px; }
+          .logo { max-height: 40px; }
+          .title-box { text-align: center; flex: 1; }
+          .title-box h1 { margin: 0; font-size: 22px; text-transform: uppercase; letter-spacing: 1px; color: #111; }
+          .title-box h2 { margin: 4px 0 0; font-size: 14px; font-weight: 500; color: #555; }
+          
+          .kpi-row { display: flex; gap: 15px; margin-bottom: 30px; }
+          .kpi-card { border: 1px solid #d1d5db; border-radius: 6px; padding: 15px; flex: 1; text-align: center; background: #f9fafb; }
+          .kpi-value { font-size: 24px; font-weight: bold; color: #2563eb; margin-bottom: 4px; }
+          .kpi-label { font-size: 11px; color: #4b5563; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+          
+          table { width: 100%; border-collapse: collapse; font-size: 12px; }
+          th { text-align: left; padding: 8px 10px; background: #f3f4f6; border-bottom: 2px solid #ccc; color: #333; font-weight: 700; text-transform: uppercase; font-size: 10px; letter-spacing: 0.5px; }
+          td { border-bottom: 1px solid #e5e7eb; padding: 6px 10px; color: #1f2937; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <img src="/assets/logo-full.png" class="logo" alt="Tableros" onerror="this.style.display='none'">
+          <div class="title-box">
+            <h1>Relatório de Estoque</h1>
+            <h2>Compensado Acabado</h2>
+          </div>
+          <div style="text-align: right; font-size: 11px; color: #555; line-height: 1.4; min-width: 150px;">
+            <div>Local: <strong style="color: #111;">${localFilter || 'Todos os Locais'}</strong></div>
+            <div>Busca: <strong style="color: #111;">${searchFilter || 'Nenhuma'}</strong></div>
+            <div style="margin-top: 4px;">Data: <strong style="color: #111;">${now}</strong></div>
+          </div>
+        </div>
+
+        <div class="kpi-row">
+          <div class="kpi-card">
+            <div class="kpi-value">${totalFardos}</div>
+            <div class="kpi-label">Total Caixas / Fardos</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-value">${totalM3.toFixed(3).replace('.', ',')} m³</div>
+            <div class="kpi-label">Volume Total (m³)</div>
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Cód. Item</th>
+              <th>Descrição</th>
+              <th>Qualidade</th>
+              <th style="text-align: right;">Caixas</th>
+              <th style="text-align: right;">Volume (m³)</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+          </tbody>
+        </table>
+
+        <script>
+          window.onload = () => { setTimeout(() => { window.print(); }, 500); }
+        </script>
+      </body>
+    </html>
+  `;
+  
+  printWindow.document.open();
+  printWindow.document.write(html);
+  printWindow.document.close();
 }
