@@ -331,13 +331,14 @@ function printEstoqueReport() {
       : 'background: #f3f4f6; color: #374151; border: 1px solid #e5e7eb;';
       
     return `
-      <div class="kpi-card" style="text-align: left;">
-        <div class="kpi-label" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-          Qualidade
-          <span style="${badgeStyle} padding: 1px 4px; border-radius: 4px; font-size: 9px;">${qualDisplay}</span>
+      <div class="kpi-card" style="text-align: left; padding: 4px 8px; min-width: auto; border: 1px solid #e5e7eb; box-shadow: none;">
+        <div style="margin-bottom: 2px;">
+          <span style="${badgeStyle} padding: 1px 4px; border-radius: 3px; font-size: 8px; font-weight: bold; text-transform: uppercase;">${qualDisplay}</span>
         </div>
-        <div style="font-size: 16px; font-weight: bold; color: #111;">${data.fardos} <span style="font-size: 10px; font-weight: normal; color: #666;">cx</span></div>
-        <div style="font-size: 12px; color: #2563eb; font-weight: bold; margin-top: 2px;">${data.m3.toFixed(3).replace('.', ',')} m³</div>
+        <div style="display: flex; align-items: baseline; gap: 8px;">
+          <div style="font-size: 12px; font-weight: bold; color: #111;">${data.fardos} <span style="font-size: 8px; font-weight: normal; color: #666;">cx</span></div>
+          <div style="font-size: 11px; color: #2563eb; font-weight: bold;">${data.m3.toFixed(3).replace('.', ',')} m³</div>
+        </div>
       </div>
     `;
   }).join('');
@@ -405,15 +406,18 @@ function printEstoqueReport() {
           </div>
         </div>
 
-        <div class="kpi-row">
+        <div class="kpi-row" style="margin-bottom: 8px;">
           <div class="kpi-card" style="border-left: 3px solid #2563eb; display: flex; flex-direction: column; justify-content: center;">
-            <div class="kpi-label" style="margin-bottom: 4px;">Total Fardos</div>
+            <div class="kpi-label" style="margin-bottom: 2px;">Total Caixas / Fardos</div>
             <div class="kpi-value">${totalFardos}</div>
           </div>
           <div class="kpi-card" style="border-left: 3px solid #2563eb; display: flex; flex-direction: column; justify-content: center;">
-            <div class="kpi-label" style="margin-bottom: 4px;">Volume (m³)</div>
+            <div class="kpi-label" style="margin-bottom: 2px;">Volume Total (m³)</div>
             <div class="kpi-value">${totalM3.toFixed(3).replace('.', ',')}</div>
           </div>
+        </div>
+
+        <div class="kpi-row" style="margin-bottom: 20px; gap: 5px;">
           ${qualCardsHtml}
         </div>
 
