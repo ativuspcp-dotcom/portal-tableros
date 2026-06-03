@@ -6,6 +6,7 @@ import { openModal, closeModal, confirmDialog } from '../components/modal.js';
 import { showToast } from '../components/toast.js';
 import { hasModuleAccess } from '../utils/permissions.js';
 import { fetchAmarracaoOps, renderAmarracaoView, bindAmarracaoEvents } from './op/amarracao.js';
+import { fetchEstoqueCompAcabado, renderEstoqueCompAcabadoView, renderEstoqueDashboard, bindEstoqueCompAcabadoEvents } from './estoque/comp-acabado.js';
 
 window.addEventListener('amarracao_created', () => {
   if (activeMainTab === 'op' && activeOpSubTab === 'amarracao') {
@@ -14,8 +15,8 @@ window.addEventListener('amarracao_created', () => {
 });
 
 // State
-let activeMainTab = 'cadastro'; // 'cadastro', 'estrutura', 'op', 'mrp'
-let activeSubTab = 'lamina_verde'; // 'lamina_verde', 'lamina_seca', 'compensado_inacabado', 'compensado_acabado'
+let activeMainTab = 'cadastro'; // 'cadastro', 'estrutura', 'op', 'mrp', 'estoque'
+let activeSubTab = 'lamina_verde'; // 'lamina_verde', 'lamina_seca', 'compensado_inacabado', 'compensado_acabado', 'estoque_comp_acabado'
 let activeOpSubTab = 'laminacao'; 
 let items = [];
 let filteredItems = [];
@@ -73,6 +74,10 @@ export async function renderPCP(container = document.getElementById('view-pcp') 
               style="padding: var(--space-2) var(--space-4); border-radius: var(--radius-md) var(--radius-md) 0 0; font-weight: var(--font-weight-semibold); border: 1px solid ${activeMainTab === 'mrp' ? 'var(--color-border)' : 'transparent'}; border-bottom: 1px solid ${activeMainTab === 'mrp' ? 'var(--color-surface)' : 'transparent'}; color: ${activeMainTab === 'mrp' ? 'var(--color-primary)' : 'var(--color-text-secondary)'}; background: ${activeMainTab === 'mrp' ? 'var(--color-surface)' : 'transparent'}; margin-bottom: -1px; font-size: var(--font-size-base); transition: all var(--transition-fast);">
               Necessidades (MRP)
             </button>
+            <button class="pcp-main-tab-btn ${activeMainTab === 'estoque' ? 'active' : ''}" data-tab="estoque" 
+              style="padding: var(--space-2) var(--space-4); border-radius: var(--radius-md) var(--radius-md) 0 0; font-weight: var(--font-weight-semibold); border: 1px solid ${activeMainTab === 'estoque' ? 'var(--color-border)' : 'transparent'}; border-bottom: 1px solid ${activeMainTab === 'estoque' ? 'var(--color-surface)' : 'transparent'}; color: ${activeMainTab === 'estoque' ? 'var(--color-primary)' : 'var(--color-text-secondary)'}; background: ${activeMainTab === 'estoque' ? 'var(--color-surface)' : 'transparent'}; margin-bottom: -1px; font-size: var(--font-size-base); transition: all var(--transition-fast);">
+              Estoques
+            </button>
           </div>
 
           <!-- Secondary Navigation Tabs -->
@@ -103,6 +108,13 @@ export async function renderPCP(container = document.getElementById('view-pcp') 
                   ${s.label}
                 </button>
               `).join('')}
+            </div>
+          ` : activeMainTab === 'estoque' ? `
+            <div class="pcp-sub-tabs" style="display: flex; gap: var(--space-4); margin-bottom: var(--space-4); border-bottom: 1px solid var(--color-border-light); padding-bottom: var(--space-2); padding-left: var(--space-2);">
+              <button class="pcp-sub-tab-btn ${activeSubTab === 'estoque_comp_acabado' || !activeSubTab.startsWith('estoque_') ? 'active' : ''}" data-subtab="estoque_comp_acabado" 
+                style="font-size: var(--font-size-sm); font-weight: ${activeSubTab === 'estoque_comp_acabado' || !activeSubTab.startsWith('estoque_') ? '600' : '400'}; color: ${activeSubTab === 'estoque_comp_acabado' || !activeSubTab.startsWith('estoque_') ? 'var(--color-primary)' : 'var(--color-text-secondary)'}; border: none; background: transparent; border-bottom: 2px solid ${activeSubTab === 'estoque_comp_acabado' || !activeSubTab.startsWith('estoque_') ? 'var(--color-primary)' : 'transparent'}; padding-bottom: 4px; transition: all var(--transition-fast);">
+                Comp. Acabado
+              </button>
             </div>
           ` : ''}
 
@@ -135,6 +147,14 @@ export async function renderPCP(container = document.getElementById('view-pcp') 
         bindAmarracaoEvents();
       }
     });
+  } else if (activeMainTab === 'estoque' && (activeSubTab === 'estoque_comp_acabado' || !activeSubTab.startsWith('estoque_'))) {
+    document.getElementById('pcp-tab-content').innerHTML = renderActiveTabView();
+    fetchEstoqueCompAcabado().then(() => {
+      if (activeMainTab === 'estoque') {
+        // Só chama renderDashboard se a view correta estiver ativa
+        renderEstoqueDashboard();
+      }
+    });
   }
 }
 
@@ -142,6 +162,11 @@ export async function renderPCP(container = document.getElementById('view-pcp') 
  * Render active view based on main/subtab combination
  */
 function renderActiveTabView() {
+  // If in estoque tab
+  if (activeMainTab === 'estoque') {
+    return renderEstoqueCompAcabadoView();
+  }
+
   // If not in items registration tab
   if (activeMainTab !== 'cadastro') {
     let title = '';

@@ -502,7 +502,10 @@ async function loadDataAndBindForm(opEdit = null) {
       return val == 1;
     });
     selPedido.innerHTML = `<option value="">Selecione um pedido pendente...</option>` + 
-      pedidosFiltrados.map(p => `<option value="${p.AbsID}">${p["'Numero'"] || p.Numero} - ${p["'NomePN'"] || p.NomePN} (${p.ItemCode})</option>`).join('');
+      pedidosFiltrados.map(p => {
+        const index = pedidos.indexOf(p);
+        return `<option value="${index}">${p["'Numero'"] || p.Numero} - ${p["'NomePN'"] || p.NomePN} (${p.ItemCode || p["'ItemCode'"]})</option>`;
+      }).join('');
   }
   
   if (selItem) {
@@ -569,7 +572,7 @@ function bindFormInteractiveLogic(items, pedidos, opEdit = null) {
 
   // Seleção de Pedido
   selPedido.addEventListener('change', () => {
-    const p = pedidos.find(x => x.AbsID == selPedido.value);
+    const p = pedidos[selPedido.value];
     if (p) {
       cliente.value = p["'NomePN'"] || '';
       
@@ -578,14 +581,17 @@ function bindFormInteractiveLogic(items, pedidos, opEdit = null) {
       const aberta = Math.max(0, plan - acum);
       qtdPlanejada.value = aberta.toFixed(3) + ' m³';
       
+      const actualItemCode = p.ItemCode || p["'ItemCode'"];
+      const actualItemName = p.ItemName || p["'ItemName'"] || p.NomeItem || p["'NomeItem'"] || 'Item do Pedido';
+      
       // Se o ItemCode do pedido não estiver no select, a gente injeta ele dinamicamente
-      if (p.ItemCode && !Array.from(itemCode.options).some(opt => opt.value === p.ItemCode)) {
-        itemCode.add(new Option(`${p.ItemCode} - ${p.ItemName || 'Item do Pedido'}`, p.ItemCode));
+      if (actualItemCode && !Array.from(itemCode.options).some(opt => opt.value === actualItemCode)) {
+        itemCode.add(new Option(`${actualItemCode} - ${actualItemName}`, actualItemCode));
       }
       
-      itemCode.value = p.ItemCode || '';
+      itemCode.value = actualItemCode || '';
       // Forçar preenchimento do Item
-      fillItemDetails(p.ItemCode, p.ItemName);
+      fillItemDetails(actualItemCode, actualItemName);
     }
   });
 

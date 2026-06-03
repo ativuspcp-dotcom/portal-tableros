@@ -838,8 +838,20 @@ async function initRemessaForm(isEdit, remessa) {
         selectPedido.dispatchEvent(new Event('change'));
         
         const selectItem = tr.querySelector('.rm-item-select');
-        selectItem.value = item.item_code;
-        selectItem.dispatchEvent(new Event('change'));
+        // Because value now includes __index, we need to find the option that matches the real item code
+        // For backwards compatibility with saved data, we find by data-realcode
+        setTimeout(() => {
+          const options = Array.from(selectItem.options);
+          const match = options.find(o => o.dataset.realcode === item.item_code);
+          if (match) {
+            selectItem.value = match.value;
+            selectItem.dispatchEvent(new Event('change'));
+          } else {
+            selectItem.value = item.item_code; // fallback
+            selectItem.dispatchEvent(new Event('change'));
+          }
+        }, 100);
+        
         
         const selectTipo = tr.querySelector('.rm-tipo-select');
         selectTipo.value = item.tipo;
@@ -960,8 +972,8 @@ function bindRemessaRowEvents(tr) {
       const pedidoItems = pedidosCache.filter(p => p.Numero === val);
       
       let itemOptions = '<option value="">Selecione o Item...</option>';
-      pedidoItems.forEach(pi => {
-        itemOptions += `<option value="${pi.ItemCode}" data-name="${pi.ItemName}" data-planejada="${pi.QuantidadePlanejada || 0}" data-acumulada="${pi.QuantidadeAcumulada || 0}" data-price="${pi.UnitPrice || 0}" data-uf="${pi.U_UF || ''}" data-codmun="${pi.U_cod_mun || ''}">${pi.ItemCode} - ${pi.ItemName}</option>`;
+      pedidoItems.forEach((pi, index) => {
+        itemOptions += `<option value="${pi.ItemCode}__${index}" data-realcode="${pi.ItemCode}" data-name="${pi.ItemName}" data-planejada="${pi.QuantidadePlanejada || 0}" data-acumulada="${pi.QuantidadeAcumulada || 0}" data-price="${pi.UnitPrice || 0}" data-uf="${pi.U_UF || ''}" data-codmun="${pi.U_cod_mun || ''}">${pi.ItemCode} - ${pi.ItemName}</option>`;
       });
       
       selectItem.innerHTML = itemOptions;
@@ -1062,7 +1074,8 @@ async function saveRemessa(isEdit, editId) {
     
     const selectItem = tr.querySelector('.rm-item-select');
     const itemOption = selectItem.selectedOptions[0];
-    const itemCode = selectItem.value;
+    const itemCodeCombo = selectItem.value; // e.g. "ACB0692__0"
+    const itemCode = itemCodeCombo ? itemCodeCombo.split('__')[0] : '';
     const itemName = itemOption ? itemOption.dataset.name : '';
     const unitPrice = itemOption ? parseFloat(itemOption.dataset.price) || 0 : 0;
     const uf = itemOption ? itemOption.dataset.uf : '';
