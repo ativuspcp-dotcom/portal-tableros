@@ -130,7 +130,7 @@ function renderTable() {
 }
 
 async function handleDelete(id) {
-  const op = apontadores.find(o => o.id === id);
+  const op = apontadores.find(o => o.id == id);
   if (!op) return;
 
   const confirmed = await confirmDialog(
