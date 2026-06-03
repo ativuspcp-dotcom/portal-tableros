@@ -15,9 +15,9 @@ window.addEventListener('amarracao_created', () => {
 });
 
 // State
-let activeMainTab = 'cadastro'; // 'cadastro', 'estrutura', 'op', 'mrp', 'estoque'
-let activeSubTab = 'lamina_verde'; // 'lamina_verde', 'lamina_seca', 'compensado_inacabado', 'compensado_acabado', 'estoque_comp_acabado'
-let activeOpSubTab = 'laminacao'; 
+let activeMainTab = sessionStorage.getItem('pcpActiveMainTab') || 'cadastro'; // 'cadastro', 'estrutura', 'op', 'mrp', 'estoque'
+let activeSubTab = sessionStorage.getItem('pcpActiveSubTab') || 'lamina_verde'; // 'lamina_verde', 'lamina_seca', 'compensado_inacabado', 'compensado_acabado', 'estoque_comp_acabado'
+let activeOpSubTab = sessionStorage.getItem('pcpActiveOpSubTab') || 'laminacao'; 
 let items = [];
 let filteredItems = [];
 let currentItem = null; // null for new, {id, ...} for edit
@@ -334,6 +334,7 @@ function bindPCPEvents() {
       const tab = btn.dataset.tab;
       if (activeMainTab === tab) return;
       activeMainTab = tab;
+      sessionStorage.setItem('pcpActiveMainTab', activeMainTab);
       renderPCP();
     });
   });
@@ -346,6 +347,7 @@ function bindPCPEvents() {
         const sub = btn.dataset.subtab;
         if (activeSubTab === sub) return;
         activeSubTab = sub;
+        sessionStorage.setItem('pcpActiveSubTab', activeSubTab);
         renderPCP();
       });
     });
@@ -359,6 +361,7 @@ function bindPCPEvents() {
         const sub = btn.dataset.subtab;
         if (activeOpSubTab === sub) return;
         activeOpSubTab = sub;
+        sessionStorage.setItem('pcpActiveOpSubTab', activeOpSubTab);
         renderPCP();
       });
     });
