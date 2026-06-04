@@ -413,19 +413,22 @@ async function fetchPedidos() {
     if (res.ok) {
       const data = await res.json();
       // Normalize keys that might have single quotes from SAP
-      const normalized = (data.value || []).map(p => ({
+      const normalized = (data.value || []).map(p => {
+        let rawName = p.FrgnName || p["'FrgnName'"] || p.ForeignName || p["'ForeignName'"] || p.ItemName || p["'ItemName'"] || p.NomeItem || p["'NomeItem'"] || '';
+        return {
         Numero: p.Numero || p["'Numero'"],
         Armazem: p.Armazem || p["'Armazem'"],
         U_cod_pn: p.U_cod_pn || p["'U_cod_pn'"],
         ItemCode: p.ItemCode || p["'ItemCode'"],
-        ItemName: p.ItemName || p["'ItemName'"] || p.NomeItem || p["'NomeItem'"],
+        ItemName: rawName,
         QuantidadePlanejada: p.QuantidadePlanejada !== undefined ? p.QuantidadePlanejada : p["'QuantidadePlanejada'"],
         QuantidadeAcumulada: p.QuantidadeAcumulada !== undefined ? p.QuantidadeAcumulada : p["'QuantidadeAcumulada'"],
         U_atv_prod: p.U_atv_prod !== undefined ? p.U_atv_prod : p["'U_atv_prod'"],
         UnitPrice: p.UnitPrice || p["'UnitPrice'"] || p.Price || p["'Price'"] || 0,
         U_UF: p.U_UF || p["'U_UF'"],
         U_cod_mun: p.U_cod_mun || p["'U_cod_mun'"]
-      }));
+      };
+      });
       // Filter the ones with U_atv_prod == null or 1
       pedidosCache = normalized.filter(p => p.U_atv_prod == 1);
     }

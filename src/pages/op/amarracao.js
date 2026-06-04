@@ -212,7 +212,11 @@ async function fetchSAPItems() {
     const res = await fetch(url, { headers: { 'ngrok-skip-browser-warning': 'true', 'Prefer': 'odata.maxpagesize=0' } });
     if (res.ok) {
       const data = await res.json();
-      sapItemsCache = data.value || [];
+      sapItemsCache = (data.value || []).map(item => {
+        // Use ForeignName if available, fallback to ItemName
+        item.ItemName = item.ForeignName || item.ItemName;
+        return item;
+      });
     }
   } catch(e) { console.error('Error fetching SAP items', e); }
   return sapItemsCache;
@@ -225,7 +229,17 @@ async function fetchPedidos() {
     const res = await fetch(url, { headers: { 'ngrok-skip-browser-warning': 'true', 'Prefer': 'odata.maxpagesize=0' } });
     if (res.ok) {
       const data = await res.json();
-      pedidosCache = data.value || [];
+      pedidosCache = (data.value || []).map(item => {
+        // Find FrgnName or ForeignName
+        const frgnName = item.FrgnName || item["'FrgnName'"] || item.ForeignName || item["'ForeignName'"];
+        if (frgnName) {
+           item.ItemName = frgnName;
+           item["'ItemName'"] = frgnName;
+           item.NomeItem = frgnName;
+           item["'NomeItem'"] = frgnName;
+        }
+        return item;
+      });
     }
   } catch(e) { console.error('Error fetching Pedidos', e); }
   return pedidosCache;
