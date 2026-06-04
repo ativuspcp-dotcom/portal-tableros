@@ -107,7 +107,11 @@ export function renderAmarracaoView() {
           <option value="Concluída" ${currentStatusFilter === 'Concluída' ? 'selected' : ''}>Concluídas</option>
         </select>
       </div>
-      <div class="toolbar-right">
+      <div class="toolbar-right" style="display: flex; gap: 8px;">
+        <button class="btn btn-outline btn-sm" id="btn-refresh-amarracao" style="height: 34px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;"><path d="M21 2v6h-6"></path><path d="M3 12a9 9 0 1 0 2.13-5.85L7 8"></path><path d="M3 22v-6h6"></path><path d="M21 12a9 9 0 1 0-2.13 5.85L17 16"></path></svg>
+          Atualizar Dados
+        </button>
         <button class="btn btn-primary btn-sm" id="btn-new-amarracao" style="height: 34px;">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
           Nova OP de Amarração
@@ -143,6 +147,19 @@ export function bindAmarracaoEvents() {
   if (btnNew) {
     btnNew.addEventListener('click', () => {
       showAmarracaoModal();
+    });
+  }
+
+  const btnRefresh = document.getElementById('btn-refresh-amarracao');
+  if (btnRefresh) {
+    btnRefresh.addEventListener('click', async (e) => {
+      e.currentTarget.disabled = true;
+      e.currentTarget.innerHTML = 'Atualizando...';
+      pedidosCache = [];
+      sapItemsCache = [];
+      await fetchAmarracaoOps();
+      window.dispatchEvent(new Event('amarracao_created'));
+      showToast('Dados atualizados com sucesso!', 'success');
     });
   }
 
@@ -209,7 +226,7 @@ async function fetchSAPItems() {
   if (sapItemsCache.length > 0) return sapItemsCache;
   try {
     const url = "/api/Items?$select=ItemCode,ItemName,ForeignName,ItemsGroupCode,SalesFactor1,SalesFactor2,SalesFactor3,SalesFactor4,U_Quality&$filter=ItemsGroupCode eq 106 and Properties1 eq 'tYES'";
-    const res = await fetch(url, { headers: { 'ngrok-skip-browser-warning': 'true', 'Prefer': 'odata.maxpagesize=0' } });
+    const res = await fetch(url, { headers: { 'ngrok-skip-browser-warning': 'true', 'Prefer': 'odata.maxpagesize=0', 'Cache-Control': 'no-cache, no-store, must-revalidate' } });
     if (res.ok) {
       const data = await res.json();
       sapItemsCache = (data.value || []).map(item => {
@@ -226,7 +243,7 @@ async function fetchPedidos() {
   if (pedidosCache.length > 0) return pedidosCache;
   try {
     const url = "/api/SQLQueries('ContratoME')/List";
-    const res = await fetch(url, { headers: { 'ngrok-skip-browser-warning': 'true', 'Prefer': 'odata.maxpagesize=0' } });
+    const res = await fetch(url, { headers: { 'ngrok-skip-browser-warning': 'true', 'Prefer': 'odata.maxpagesize=0', 'Cache-Control': 'no-cache, no-store, must-revalidate' } });
     if (res.ok) {
       const data = await res.json();
       pedidosCache = (data.value || []).map(item => {

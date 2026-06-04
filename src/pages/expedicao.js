@@ -240,6 +240,23 @@ function bindExpedicaoEvents() {
       showRemessaModal();
     });
   }
+
+  const btnRefresh = document.getElementById('btn-refresh-expedicao');
+  if (btnRefresh) {
+    btnRefresh.addEventListener('click', async (e) => {
+      e.currentTarget.disabled = true;
+      e.currentTarget.innerHTML = 'Atualizando...';
+      pedidosCache = [];
+      sapItemsCache = [];
+      empresasCache = [];
+      placasCache = [];
+      reboquesCache = [];
+      motoristasCache = [];
+      await fetchRemessas();
+      renderExpedicao();
+      showToast('Dados atualizados com sucesso!', 'success');
+    });
+  }
   
   const filterRemessa = document.getElementById('remessa-status-filter');
   if (filterRemessa) {
@@ -349,9 +366,13 @@ function renderRemessaArmazemTab(canCreate, canEdit, canDelete) {
           <option value="Concluída" ${remessasStatusFilter === 'Concluída' ? 'selected' : ''}>Concluídas</option>
         </select>
       </div>
-      <div class="toolbar-right">
+      <div class="flex" style="gap: 12px; margin-left: auto;">
+        <button id="btn-refresh-expedicao" class="btn btn-outline">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;"><path d="M21 2v6h-6"></path><path d="M3 12a9 9 0 1 0 2.13-5.85L7 8"></path><path d="M3 22v-6h6"></path><path d="M21 12a9 9 0 1 0-2.13 5.85L17 16"></path></svg> 
+          Atualizar Dados
+        </button>
         ${canCreate ? `
-        <button class="btn btn-primary btn-sm" id="btn-new-remessa" style="height: 34px;">
+        <button id="btn-new-remessa" class="btn btn-primary">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
           Nova Remessa
         </button>
@@ -409,7 +430,7 @@ async function fetchPedidos() {
   if (pedidosCache.length > 0) return pedidosCache;
   try {
     const url = "/api/SQLQueries('ContratoME')/List";
-    const res = await fetch(url, { headers: { 'ngrok-skip-browser-warning': 'true', 'Prefer': 'odata.maxpagesize=0' } });
+    const res = await fetch(url, { headers: { 'ngrok-skip-browser-warning': 'true', 'Prefer': 'odata.maxpagesize=0', 'Cache-Control': 'no-cache, no-store, must-revalidate' } });
     if (res.ok) {
       const data = await res.json();
       // Normalize keys that might have single quotes from SAP
