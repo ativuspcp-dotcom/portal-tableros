@@ -208,8 +208,6 @@ function showTransferenciaModal(editId = null) {
               Nenhum item adicionado à transferência.
             </div>
 
-            <datalist id="tf-items-list"></datalist>
-
           </form>
         </div>
         
@@ -230,14 +228,6 @@ async function initTransferenciaForm(isEdit, transf) {
   overlay.style.display = 'flex';
   
   await fetchExpedicaoItems();
-  
-  const datalist = document.getElementById('tf-items-list');
-  if (datalist) {
-    datalist.innerHTML = expedicaoItemsCache.map(i => {
-      const display = i.ForeignName || i.ItemName;
-      return `<option value="${i.ItemCode} - ${display}"></option>`;
-    }).join('');
-  }
   
   document.getElementById('btn-add-tf-item').addEventListener('click', () => {
     addTransferenciaItemRow();
@@ -288,8 +278,9 @@ function addTransferenciaItemRow(existingItem = null) {
   const tr = document.createElement('tr');
   tr.innerHTML = `
     <td style="text-align: center; color: var(--color-text-secondary);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg></td>
-    <td>
-      <input type="text" class="form-input tf-item-input" list="tf-items-list" placeholder="Digite para buscar..." autocomplete="off" required style="width: 100%;">
+    <td style="position: relative;">
+      <input type="text" class="form-input tf-item-input" placeholder="Digite para buscar..." autocomplete="off" required style="width: 100%;">
+      <div class="tf-item-dropdown" style="display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); box-shadow: 0 4px 12px rgba(0,0,0,0.15); max-height: 250px; overflow-y: auto; z-index: 9999;"></div>
     </td>
     <td>
       <select class="form-select tf-tipo-select" style="width: 100%;" required>
@@ -311,6 +302,51 @@ function addTransferenciaItemRow(existingItem = null) {
     tr.querySelector('.tf-item-input').value = existingItem.item_code + ' - ' + (existingItem.item_name || '');
   }
   
+  // Custom dropdown logic
+  const inputItem = tr.querySelector('.tf-item-input');
+  const dropdownItem = tr.querySelector('.tf-item-dropdown');
+  const options = expedicaoItemsCache.map(i => {
+    const display = i.ForeignName || i.ItemName;
+    return { text: `${i.ItemCode} - ${display}` };
+  });
+
+  function renderDropdown(filterText = '') {
+    const lowerFilter = filterText.toLowerCase();
+    const filtered = options.filter(o => o.text.toLowerCase().includes(lowerFilter));
+    dropdownItem.innerHTML = filtered.map(o => `
+      <div class="tf-dropdown-option" style="padding: 10px 12px; cursor: pointer; border-bottom: 1px solid var(--color-border-light); font-size: 13px;" data-value="${o.text}">
+        ${o.text}
+      </div>
+    `).join('');
+    
+    dropdownItem.querySelectorAll('.tf-dropdown-option').forEach(opt => {
+      opt.addEventListener('mousedown', (e) => { // mousedown runs before blur
+        inputItem.value = e.currentTarget.dataset.value;
+        dropdownItem.style.display = 'none';
+      });
+      opt.addEventListener('mouseenter', (e) => {
+        e.currentTarget.style.background = 'var(--color-bg-hover, #f3f4f6)';
+      });
+      opt.addEventListener('mouseleave', (e) => {
+        e.currentTarget.style.background = '';
+      });
+    });
+  }
+
+  inputItem.addEventListener('focus', () => {
+    renderDropdown(inputItem.value);
+    dropdownItem.style.display = 'block';
+  });
+
+  inputItem.addEventListener('input', () => {
+    renderDropdown(inputItem.value);
+    dropdownItem.style.display = 'block';
+  });
+
+  inputItem.addEventListener('blur', () => {
+    dropdownItem.style.display = 'none';
+  });
+
   tr.querySelector('.btn-remove-tf-item').addEventListener('click', () => {
     tr.remove();
     if (tbody.children.length === 0) {
