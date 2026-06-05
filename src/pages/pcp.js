@@ -115,7 +115,7 @@ export async function renderPCP(container = document.getElementById('view-pcp') 
             <div class="pcp-sub-tabs" style="display: flex; gap: var(--space-4); margin-bottom: var(--space-4); border-bottom: 1px solid var(--color-border-light); padding-bottom: var(--space-2); padding-left: var(--space-2);">
               <button class="pcp-sub-tab-btn ${activeSubTab === 'amarracoes' || !activeSubTab.startsWith('estoque_') && activeSubTab !== 'lamina_verde' && activeSubTab !== 'lamina_seca' && activeSubTab !== 'compensado_inacabado' && activeSubTab !== 'compensado_acabado' ? 'active' : ''}" data-subtab="amarracoes" 
                 style="font-size: var(--font-size-sm); font-weight: ${activeSubTab === 'amarracoes' || !activeSubTab.startsWith('estoque_') && activeSubTab !== 'lamina_verde' && activeSubTab !== 'lamina_seca' && activeSubTab !== 'compensado_inacabado' && activeSubTab !== 'compensado_acabado' ? '600' : '400'}; color: ${activeSubTab === 'amarracoes' || !activeSubTab.startsWith('estoque_') && activeSubTab !== 'lamina_verde' && activeSubTab !== 'lamina_seca' && activeSubTab !== 'compensado_inacabado' && activeSubTab !== 'compensado_acabado' ? 'var(--color-primary)' : 'var(--color-text-secondary)'}; border: none; background: transparent; border-bottom: 2px solid ${activeSubTab === 'amarracoes' || !activeSubTab.startsWith('estoque_') && activeSubTab !== 'lamina_verde' && activeSubTab !== 'lamina_seca' && activeSubTab !== 'compensado_inacabado' && activeSubTab !== 'compensado_acabado' ? 'var(--color-primary)' : 'transparent'}; padding-bottom: 4px; transition: all var(--transition-fast);">
-                Amarrações de Pacotes
+                Amarração
               </button>
             </div>
           ` : activeMainTab === 'op' ? `
