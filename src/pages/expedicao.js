@@ -480,7 +480,7 @@ async function fetchPedidos() {
   return pedidosCache;
 }
 
-async function fetchLogisticaData() {
+export async function fetchLogisticaData() {
   if (empresasCache.length === 0) {
     try {
       const url = "/api/BusinessPartners?$select=CardCode,CardName,BPFiscalTaxIDCollection&$filter=Properties1 eq 'tYES'";

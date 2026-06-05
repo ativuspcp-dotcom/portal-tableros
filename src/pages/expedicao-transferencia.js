@@ -2,7 +2,7 @@ import { getBPLID } from '../auth/auth.js';
 import { supabase } from '../config/supabase.js';
 import { showToast } from '../components/toast.js';
 import { confirmDialog } from '../components/modal.js';
-import { fetchRemessas, transferenciasCache, empresasCache, placasCache, motoristasCache } from './expedicao.js';
+import { fetchRemessas, fetchLogisticaData, transferenciasCache, empresasCache, placasCache, motoristasCache } from './expedicao.js';
 
 let expedicaoItemsCache = [];
 
@@ -250,7 +250,15 @@ async function initTransferenciaForm(isEdit, transf) {
   const overlay = document.getElementById('tf-loading-overlay');
   overlay.style.display = 'flex';
   
-  await fetchExpedicaoItems();
+  await Promise.all([
+    fetchExpedicaoItems(),
+    fetchLogisticaData()
+  ]);
+
+  const selectTransp = document.getElementById('tf-transportadora');
+  // Re-populate transportadora after fetch
+  selectTransp.innerHTML = '<option value="">Selecione...</option>' + 
+    empresasCache.map(e => `<option value="${e.nome_fantasia}" data-cnpj="${e.cnpj}" data-cod="${e.card_code}" ${transf && transf.transportadora === e.nome_fantasia ? 'selected' : ''}>${e.nome_fantasia} (${e.cnpj})</option>`).join('');
   
   document.getElementById('btn-add-tf-item').addEventListener('click', () => {
     addTransferenciaItemRow();
