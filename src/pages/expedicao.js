@@ -167,7 +167,7 @@ export async function renderExpedicao(container = document.getElementById('view-
   const canEdit = hasModuleAccess('expedicao', 'can_edit');
   const canDelete = hasModuleAccess('expedicao', 'can_delete');
 
-  if (activeMainTab === 'ordem_carregamento' && activeSubTab === 'remessa_armazem') {
+  if (activeMainTab === 'ordem_carregamento') {
     await fetchRemessas();
   }
 
