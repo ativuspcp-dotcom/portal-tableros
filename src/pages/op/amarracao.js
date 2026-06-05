@@ -96,7 +96,53 @@ export function renderAmarracaoView() {
         </tr>
       `}).join('');
 
-  return `
+  let totalUnidadesProduzidas = 0;
+  let totalUnidadesPrevistas = 0;
+  let totalM3Produzido = 0;
+  let totalM3Previsto = 0;
+  
+  amarracaoOps.forEach(op => {
+    totalUnidadesProduzidas += (op.apontado_pecas || 0);
+    totalUnidadesPrevistas += (op.qtd_total_chapas || 0);
+    totalM3Produzido += (op.apontado_m3 || 0);
+    totalM3Previsto += (op.total_m3 || 0);
+  });
+  
+  const unidadesAberto = Math.max(0, totalUnidadesPrevistas - totalUnidadesProduzidas);
+  const m3Aberto = Math.max(0, totalM3Previsto - totalM3Produzido);
+  const percUnidades = totalUnidadesPrevistas > 0 ? Math.round((totalUnidadesProduzidas / totalUnidadesPrevistas) * 100) : 0;
+  const percM3 = totalM3Previsto > 0 ? Math.round((totalM3Produzido / totalM3Previsto) * 100) : 0;
+
+  const kpisHtml = `
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--space-4); margin-bottom: var(--space-4);">
+      <div class="card" style="padding: var(--space-3); border-left: 4px solid var(--color-primary); display: flex; flex-direction: column; justify-content: center;">
+        <div style="font-size: var(--font-size-xs); color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Unidades (Pacotes / Chapas)</div>
+        <div style="display: flex; align-items: baseline; justify-content: space-between; margin-top: 4px;">
+          <span style="font-size: 1.5rem; font-weight: 700; color: var(--color-text);">${totalUnidadesProduzidas}</span>
+          <span style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">/ ${totalUnidadesPrevistas}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px; font-size: var(--font-size-xs);">
+          <span style="color: var(--color-warning); font-weight: 500;">Em aberto: ${unidadesAberto}</span>
+          <span style="background: var(--color-background-alt); padding: 2px 6px; border-radius: 4px; font-weight: 600; color: var(--color-primary);">${percUnidades}%</span>
+        </div>
+      </div>
+      
+      <div class="card" style="padding: var(--space-3); border-left: 4px solid var(--color-success); display: flex; flex-direction: column; justify-content: center;">
+        <div style="font-size: var(--font-size-xs); color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Volume Produzido (m³)</div>
+        <div style="display: flex; align-items: baseline; justify-content: space-between; margin-top: 4px;">
+          <span style="font-size: 1.5rem; font-weight: 700; color: var(--color-text);">${totalM3Produzido.toFixed(4)}</span>
+          <span style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">/ ${totalM3Previsto.toFixed(4)}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px; font-size: var(--font-size-xs);">
+          <span style="color: var(--color-warning); font-weight: 500;">Em aberto: ${m3Aberto.toFixed(4)}</span>
+          <span style="background: var(--color-background-alt); padding: 2px 6px; border-radius: 4px; font-weight: 600; color: var(--color-success);">${percM3}%</span>
+        </div>
+      </div>
+    </div>
+  `;
+
+  return \`
+    \${kpisHtml}
     <!-- Search/Filters toolbar -->
     <div class="toolbar" style="margin-bottom: var(--space-4); display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; justify-content: space-between;">
       <div class="toolbar-left" style="display: flex; flex-wrap: wrap; gap: var(--space-2); flex: 1;">
