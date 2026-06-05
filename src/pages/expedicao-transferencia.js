@@ -301,6 +301,23 @@ function addTransferenciaItemRow(existingItem = null) {
     tr.querySelector('.tf-item-input').value = existingItem.item_code + ' - ' + (existingItem.item_name || '');
   }
   
+  const selectTipo = tr.querySelector('.tf-tipo-select');
+  const inputQtdProg = tr.querySelector('.tf-qtd-prog');
+
+  function updateQtdState() {
+    if (selectTipo.value === 'Complementar') {
+      inputQtdProg.value = '';
+      inputQtdProg.disabled = true;
+      inputQtdProg.required = false;
+    } else {
+      inputQtdProg.disabled = false;
+      inputQtdProg.required = true;
+    }
+  }
+
+  selectTipo.addEventListener('change', updateQtdState);
+  updateQtdState(); // Run once for initial state
+  
   // Custom dropdown logic
   const inputItem = tr.querySelector('.tf-item-input');
   const dropdownItem = document.createElement('div');
