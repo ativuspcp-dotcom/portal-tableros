@@ -34,6 +34,9 @@ export async function printRomaneioReport(ocId) {
 
     if (pkgsError) throw pkgsError;
 
+    const isTransfer = oc.tipo === 'transferencia_interna';
+    const reportTitle = isTransfer ? 'Relatório de Transferência Interna' : 'Romaneio de Expedição';
+
     // Build Report HTML
     let html = `
       <!DOCTYPE html>
@@ -41,62 +44,186 @@ export async function printRomaneioReport(ocId) {
       <head>
         <meta charset="utf-8">
         <title>Romaneio - ${oc.codigo_oc || 'Sem Código'}</title>
+        <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
         <style>
-          body { font-family: 'Arial', sans-serif; padding: 20px; font-size: 12px; color: #333; }
-          .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #ccc; padding-bottom: 10px; }
-          .header h1 { margin: 0 0 5px 0; font-size: 20px; }
-          .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
-          .info-item { background: #f9f9f9; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
-          .info-item strong { display: block; font-size: 10px; color: #666; text-transform: uppercase; }
-          table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-          th, td { padding: 8px; border: 1px solid #ccc; text-align: left; }
-          th { background: #f0f0f0; font-weight: bold; font-size: 11px; }
-          .item-row { background: #e8f4f8; font-weight: bold; }
-          .footer { margin-top: 40px; text-align: center; font-size: 10px; color: #777; border-top: 1px solid #ccc; padding-top: 10px; }
+          :root {
+            --primary: #2b5c46; /* Tableros brand color */
+            --text-main: #202124;
+            --text-muted: #5f6368;
+            --border: #dadce0;
+          }
+          body { 
+            font-family: 'Roboto', sans-serif; 
+            padding: 20px; 
+            font-size: 11px; 
+            color: var(--text-main); 
+            line-height: 1.4;
+            margin: 0;
+            background: #fff;
+          }
+          .header-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 12px;
+            margin-bottom: 16px;
+          }
+          .logo { max-height: 50px; }
+          .header-text { text-align: right; }
+          .header-text h1 { margin: 0 0 4px 0; font-size: 18px; color: var(--primary); text-transform: uppercase; letter-spacing: 0.5px; }
+          .header-text .oc-code { font-size: 14px; font-weight: bold; color: var(--text-main); }
+          
+          .info-panel {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-bottom: 20px;
+            background: #f8f9fa;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 12px;
+          }
+          .info-item { display: flex; flex-direction: column; }
+          .info-label { font-size: 9px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 2px; }
+          .info-val { font-size: 11px; font-weight: 500; color: var(--text-main); }
+
+          .section-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 4px;
+          }
+
+          table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+          th, td { padding: 4px 8px; border-bottom: 1px solid var(--border); text-align: left; }
+          th { 
+            background: #f1f3f4; 
+            font-weight: 700; 
+            font-size: 10px; 
+            color: var(--text-muted);
+            text-transform: uppercase;
+          }
+          tr:nth-child(even) { background-color: #fafafa; }
+          
+          .item-group-header {
+            background: #e8f0fe !important;
+            border-top: 2px solid #aecbfa;
+          }
+          .item-group-header td { padding: 6px 8px; }
+          .item-name { font-size: 12px; font-weight: 700; color: #1967d2; }
+          .item-meta { font-size: 9px; color: #5f6368; font-weight: 500; margin-top: 2px; }
+          
+          .pkg-row td { font-size: 10px; font-family: monospace; }
+          .pkg-row td.numeric { text-align: right; font-family: 'Roboto', sans-serif; font-size: 10px; }
+          .pkg-row td.center { text-align: center; font-family: 'Roboto', sans-serif; }
+
+          tfoot tr td {
+            font-size: 11px;
+            font-weight: 700;
+            background: #f1f3f4 !important;
+            border-top: 2px solid var(--primary);
+          }
+
+          .footer { 
+            margin-top: 30px; 
+            text-align: center; 
+            font-size: 9px; 
+            color: var(--text-muted); 
+            border-top: 1px solid var(--border); 
+            padding-top: 8px; 
+          }
+          
+          .print-btn-container { text-align: right; margin-bottom: 15px; }
+          .btn-print {
+            padding: 8px 16px; background: var(--primary); color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500; font-family: 'Roboto'; font-size: 12px; display: inline-flex; align-items: center; gap: 6px;
+            transition: opacity 0.2s;
+          }
+          .btn-print:hover { opacity: 0.9; }
+
           @media print {
             body { padding: 0; }
-            button { display: none; }
+            .print-btn-container { display: none; }
+            .info-panel { border-color: #000; background: transparent; }
+            th { background: transparent; border-bottom: 1px solid #000; color: #000; }
+            td { border-bottom: 1px solid #eee; }
+            .item-group-header { background: transparent !important; border-top: 1px solid #000; border-bottom: 1px dashed #ccc; }
+            tfoot tr td { background: transparent !important; border-top: 1px solid #000; }
           }
         </style>
       </head>
       <body>
-        <div style="text-align: right; margin-bottom: 10px;">
-          <button onclick="window.print()" style="padding: 8px 16px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Imprimir Relatório</button>
+        <div class="print-btn-container">
+          <button class="btn-print" onclick="window.print()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+            Imprimir Documento
+          </button>
         </div>
 
-        <div class="header">
-          <h1>Relatório de Romaneio</h1>
-          <div>Ordem de Carregamento: <strong>${oc.codigo_oc || oc.id.substring(0,8)}</strong></div>
-          <div>Status: ${oc.status || 'Ativa'}</div>
+        <div class="header-container">
+          <div><img src="/assets/logo-full.png" class="logo" alt="Tableros" onerror="this.style.display='none'"></div>
+          <div class="header-text">
+            <h1>${reportTitle}</h1>
+            <div class="oc-code">CÓD: ${oc.codigo_oc || oc.id.substring(0,8).toUpperCase()}</div>
+            <div style="font-size: 10px; color: var(--text-muted); margin-top: 2px;">Data de Emissão: ${new Date().toLocaleDateString('pt-BR')}</div>
+          </div>
         </div>
 
-        <div class="info-grid">
-          <div class="info-item"><strong>Transportadora</strong>${oc.transportadora || '-'}</div>
-          <div class="info-item"><strong>Placa do Veículo</strong>${oc.placa || '-'}</div>
-          <div class="info-item"><strong>Tipo</strong>${oc.tipo === 'transferencia_interna' ? 'Transferência Interna' : 'Remessa para Armazém'}</div>
-          <div class="info-item"><strong>Previsão de Carga</strong>${oc.previsao_carga ? new Date(oc.previsao_carga).toLocaleString('pt-BR') : '-'}</div>
-          ${oc.tipo === 'transferencia_interna' ? `
-            <div class="info-item"><strong>Local Partida</strong>${oc.local_partida || '-'}</div>
-            <div class="info-item"><strong>Local Destino</strong>${oc.local_destino || '-'}</div>
+        <div class="info-panel">
+          <div class="info-item">
+            <span class="info-label">Transportadora</span>
+            <span class="info-val">${oc.transportadora || '-'}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Placa do Veículo</span>
+            <span class="info-val">${oc.placa || '-'}</span>
+          </div>
+          ${isTransfer ? `
+            <div class="info-item">
+              <span class="info-label">Local de Partida</span>
+              <span class="info-val">${oc.local_partida || '-'}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Local de Destino</span>
+              <span class="info-val">${oc.local_destino || '-'}</span>
+            </div>
           ` : `
-            <div class="info-item"><strong>Motorista</strong>${oc.motorista || '-'}</div>
+            <div class="info-item">
+              <span class="info-label">Motorista</span>
+              <span class="info-val">${oc.motorista || '-'}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Status da Ordem</span>
+              <span class="info-val">${oc.status || '-'}</span>
+            </div>
           `}
+          <div class="info-item">
+            <span class="info-label">Previsão de Carga</span>
+            <span class="info-val">${oc.previsao_carga ? new Date(oc.previsao_carga).toLocaleString('pt-BR') : '-'}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Peso Máximo (kg)</span>
+            <span class="info-val">${oc.peso_maximo ? Number(oc.peso_maximo).toFixed(2) : 'Sem Limite'}</span>
+          </div>
         </div>
 
-        <h3>Pacotes Bipados por Item</h3>
+        <div class="section-title">Listagem de Pacotes Bipados</div>
     `;
 
     if (!scannedPkgs || scannedPkgs.length === 0) {
-      html += `<div style="text-align: center; padding: 20px; background: #fff3e0; color: #e65100; border: 1px solid #ffe0b2; border-radius: 4px;">Nenhum pacote foi bipado nesta ordem ainda.</div>`;
+      html += `<div style="text-align: center; padding: 30px; background: #fff3e0; color: #e65100; border: 1px solid #ffe0b2; border-radius: 6px; font-weight: 500;">Nenhum pacote foi registrado no romaneio desta ordem.</div>`;
     } else {
       html += `
         <table>
           <thead>
             <tr>
-              <th>QR Code / Lote</th>
-              <th style="text-align: right;">Qtd / Volume</th>
-              <th style="text-align: right;">Peso (kg)</th>
-              <th style="text-align: center;">Data Bipe</th>
+              <th style="width: 40%;">Etiqueta / QR Code</th>
+              <th style="text-align: right; width: 20%;">Volume / Qtd</th>
+              <th style="text-align: right; width: 20%;">Peso (kg)</th>
+              <th style="text-align: center; width: 20%;">Registro (Bipe)</th>
             </tr>
           </thead>
           <tbody>
@@ -104,6 +231,7 @@ export async function printRomaneioReport(ocId) {
 
       let totalVolumeGeral = 0;
       let totalPesoGeral = 0;
+      let totalPacotesGeral = 0;
 
       // Group packages by item
       for (const item of ocItems) {
@@ -116,13 +244,16 @@ export async function printRomaneioReport(ocId) {
 
           totalVolumeGeral += actualVol;
           totalPesoGeral += actualPeso;
+          totalPacotesGeral += pkgsForThisItem.length;
 
           html += `
-            <tr class="item-row">
+            <tr class="item-group-header">
               <td colspan="4">
-                <div style="font-size: 13px;">${item.item_code} - ${item.item_name}</div>
-                <div style="font-size: 10px; color: #555; font-weight: normal; margin-top: 2px;">
-                  Previsto: ${expectedVol.toFixed(4)} | Bipado: ${actualVol.toFixed(4)} | Total Pacotes: ${pkgsForThisItem.length}
+                <div class="item-name">${item.item_code} &mdash; ${item.item_name || 'Sem Descrição'}</div>
+                <div class="item-meta">
+                  PROGRAMADO: ${expectedVol.toFixed(4)} &nbsp;|&nbsp; 
+                  CARREGADO: ${actualVol.toFixed(4)} &nbsp;|&nbsp; 
+                  TOTAL DE PACOTES: ${pkgsForThisItem.length}
                 </div>
               </td>
             </tr>
@@ -130,11 +261,11 @@ export async function printRomaneioReport(ocId) {
 
           pkgsForThisItem.sort((a, b) => new Date(a.created_at) - new Date(b.created_at)).forEach(pkg => {
             html += `
-              <tr>
-                <td style="font-family: monospace;">${pkg.qrcode}</td>
-                <td style="text-align: right;">${Number(pkg.quantidade).toFixed(4)}</td>
-                <td style="text-align: right;">${Number(pkg.peso).toFixed(2)}</td>
-                <td style="text-align: center; font-size: 10px;">${new Date(pkg.created_at).toLocaleString('pt-BR')}</td>
+              <tr class="pkg-row">
+                <td>${pkg.qrcode}</td>
+                <td class="numeric">${Number(pkg.quantidade).toFixed(4)}</td>
+                <td class="numeric">${Number(pkg.peso).toFixed(2)}</td>
+                <td class="center">${new Date(pkg.created_at).toLocaleString('pt-BR')}</td>
               </tr>
             `;
           });
@@ -144,10 +275,10 @@ export async function printRomaneioReport(ocId) {
       html += `
           </tbody>
           <tfoot>
-            <tr style="background: #f0f0f0; font-weight: bold;">
-              <td style="text-align: right;">TOTAL GERAL:</td>
-              <td style="text-align: right;">${totalVolumeGeral.toFixed(4)}</td>
-              <td style="text-align: right;">${totalPesoGeral.toFixed(2)} kg</td>
+            <tr>
+              <td style="text-align: right; padding-right: 16px;">TOTAL GERAL (${totalPacotesGeral} PACOTES):</td>
+              <td class="numeric">${totalVolumeGeral.toFixed(4)}</td>
+              <td class="numeric">${totalPesoGeral.toFixed(2)}</td>
               <td></td>
             </tr>
           </tfoot>
@@ -157,28 +288,20 @@ export async function printRomaneioReport(ocId) {
 
     html += `
         <div class="footer">
-          Gerado pelo Portal Tableros em ${new Date().toLocaleString('pt-BR')}
+          Gerado pelo Sistema PCP Tableros em ${new Date().toLocaleString('pt-BR')} &mdash; ${oc.id}
         </div>
       </body>
       </html>
     `;
 
-    // Open in a new popup window and print
-    const printWindow = window.open('', '_blank', 'width=800,height=600');
+    // Open in a new popup window and DO NOT auto-print
+    const printWindow = window.open('', '_blank');
     if (printWindow) {
       printWindow.document.open();
       printWindow.document.write(html);
       printWindow.document.close();
-      
-      // Auto trigger print when loaded
-      printWindow.onload = () => {
-        // give it a tiny bit of time to render styles
-        setTimeout(() => {
-          printWindow.print();
-        }, 300);
-      };
     } else {
-      alert('Por favor, permita pop-ups para abrir o relatório.');
+      alert('Por favor, permita pop-ups no navegador para visualizar o relatório.');
     }
 
   } catch (err) {

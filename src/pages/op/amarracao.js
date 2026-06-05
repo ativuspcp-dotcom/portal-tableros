@@ -1246,7 +1246,6 @@ function printAmarracaoOp(id) {
       
       <script>
         document.title = "OP_${op.codigo_op || 'Nova'}";
-        window.onload = function() { setTimeout(function() { window.print(); window.close(); }, 500); }
       </script>
     </body>
     </html>
