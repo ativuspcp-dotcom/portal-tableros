@@ -515,11 +515,16 @@ async function saveTransferencia(isEdit, editId) {
     btnSave.disabled = true;
     btnSave.textContent = 'Salvando...';
     
+    const transpSelect = document.getElementById('tf-transportadora');
+    const transportadora = transpSelect.value;
+    const transportadoraCod = transpSelect.selectedOptions[0]?.dataset?.cod || null;
+
     const headerData = {
       bplid: getBPLID(),
       tipo: 'transferencia_interna',
       previsao_carga: new Date(previsao).toISOString(),
-      transportadora: document.getElementById('tf-transportadora').value || null,
+      transportadora: transportadora || null,
+      transportadora_cod: transportadoraCod,
       placa: document.getElementById('tf-placa').value || null,
       motorista: document.getElementById('tf-motorista').value || null,
       local_partida: localPartida,
