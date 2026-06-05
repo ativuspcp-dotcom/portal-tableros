@@ -257,11 +257,11 @@ function renderEstoqueItemTable() {
 
     return `
     <tr>
-      <td style="font-family: monospace; font-weight: var(--font-weight-semibold); color: var(--color-text);">${data.cod}</td>
-      <td style="font-weight: var(--font-weight-medium); color: var(--color-text);">${data.nome || '-'}</td>
-      <td><span class="badge" style="${badgeStyle}">${qualDisplay}</span></td>
-      <td style="text-align: right; font-weight: var(--font-weight-semibold);">${data.fardos}</td>
-      <td style="text-align: right; color: var(--color-primary); font-weight: var(--font-weight-semibold);">${data.m3.toFixed(3).replace('.', ',')}</td>
+      <td style="padding: 6px 12px; font-family: monospace; font-weight: var(--font-weight-semibold); color: var(--color-text);">${data.cod}</td>
+      <td style="padding: 6px 12px; font-weight: var(--font-weight-medium); color: var(--color-text);">${data.nome || '-'}</td>
+      <td style="padding: 6px 12px;"><span class="badge" style="${badgeStyle}">${qualDisplay}</span></td>
+      <td style="padding: 6px 12px; text-align: right; font-weight: var(--font-weight-semibold);">${data.fardos}</td>
+      <td style="padding: 6px 12px; text-align: right; color: var(--color-primary); font-weight: var(--font-weight-semibold);">${data.m3.toFixed(3).replace('.', ',')}</td>
     </tr>
   `}).join('');
 }
