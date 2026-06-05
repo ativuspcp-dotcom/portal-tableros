@@ -152,15 +152,24 @@ function showTransferenciaModal(editId = null) {
               </div>
               <div>
                 <label class="form-label">Transportadora</label>
-                <input type="text" id="tf-transportadora" class="form-input" placeholder="Nome da Transportadora">
+                <select id="tf-transportadora" class="form-select">
+                  <option value="">Selecione...</option>
+                  ${empresasCache.map(e => `<option value="${e.nome_fantasia}" data-cnpj="${e.cnpj}" data-cod="${e.card_code}" ${transf && transf.transportadora === e.nome_fantasia ? 'selected' : ''}>${e.nome_fantasia} (${e.cnpj})</option>`).join('')}
+                </select>
               </div>
               <div>
                 <label class="form-label">Placa do Veículo</label>
-                <input type="text" id="tf-placa" class="form-input" placeholder="ABC-1234">
+                <select id="tf-placa" class="form-select">
+                  <option value="">Selecione...</option>
+                  ${placasCache.map(p => `<option value="${p.placa}" ${transf && transf.placa === p.placa ? 'selected' : ''}>${p.placa}</option>`).join('')}
+                </select>
               </div>
               <div>
                 <label class="form-label">Motorista</label>
-                <input type="text" id="tf-motorista" class="form-input" placeholder="Nome do Motorista">
+                <select id="tf-motorista" class="form-select">
+                  <option value="">Selecione...</option>
+                  ${motoristasCache.map(m => `<option value="${m.nome}" ${transf && transf.motorista === m.nome ? 'selected' : ''}>${m.nome}</option>`).join('')}
+                </select>
               </div>
               <div>
                 <label class="form-label">Local de Partida <span style="color: var(--color-danger);">*</span></label>
@@ -237,6 +246,38 @@ async function initTransferenciaForm(isEdit, transf) {
     const editId = isEdit && transf ? transf.id : null;
     await saveTransferencia(isEdit, editId);
   });
+  
+  const selectTransp = document.getElementById('tf-transportadora');
+  const selectPlaca = document.getElementById('tf-placa');
+  const selectMotorista = document.getElementById('tf-motorista');
+  selectTransp.addEventListener('change', () => {
+    const selectedOption = selectTransp.selectedOptions[0];
+    const cod = selectedOption ? selectedOption.dataset.cod : null;
+    const cnpj = selectedOption ? selectedOption.dataset.cnpj : null;
+    const transpId = empresasCache.find(e => e.card_code === cod || e.cnpj === cnpj)?.id;
+    
+    let filteredPlacas = placasCache;
+    if (transpId) {
+      filteredPlacas = placasCache.filter(p => p.empresa_id === transpId);
+    }
+    selectPlaca.innerHTML = '<option value="">Selecione...</option>' + filteredPlacas.map(p => `<option value="${p.placa}">${p.placa}</option>`).join('');
+    
+    let filteredMotoristas = motoristasCache;
+    if (transpId) {
+      filteredMotoristas = motoristasCache.filter(m => m.empresa_id === transpId);
+    }
+    selectMotorista.innerHTML = '<option value="">Selecione...</option>' + filteredMotoristas.map(m => `<option value="${m.nome}">${m.nome}</option>`).join('');
+  });
+  
+  // Trigger change immediately to set correct filtered state if editing
+  if (isEdit && transf && transf.transportadora) {
+    const changeEvent = new Event('change');
+    selectTransp.dispatchEvent(changeEvent);
+    
+    // Restore values after the filter wipes them
+    selectPlaca.value = transf.placa || '';
+    selectMotorista.value = transf.motorista || '';
+  }
   
   if (isEdit && transf) {
     if (transf.previsao_carga) {

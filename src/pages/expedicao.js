@@ -19,10 +19,10 @@ let transferenciasStatusFilter = 'Todas';
 // Data caches for the form
 let pedidosCache = [];
 let sapItemsCache = []; // Will be used to resolve items later
-let empresasCache = [];
-let placasCache = [];
-let reboquesCache = [];
-let motoristasCache = [];
+export let empresasCache = [];
+export let placasCache = [];
+export let reboquesCache = [];
+export let motoristasCache = [];
 
 /**
  * Render Expedição page
