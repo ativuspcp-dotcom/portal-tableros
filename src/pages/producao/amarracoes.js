@@ -3,9 +3,14 @@ import { showToast } from '../../components/toast.js';
 import { confirmDialog } from '../../components/modal.js';
 
 let amarracoesCache = [];
+let amarracoesCacheByDate = {};
 let currentDateFilter = new Date().toISOString().split('T')[0];
 
-export async function fetchAmarracoesProducao() {
+export async function fetchAmarracoesProducao(forceRefresh = false) {
+  if (!forceRefresh && amarracoesCacheByDate[currentDateFilter]) {
+    amarracoesCache = amarracoesCacheByDate[currentDateFilter];
+    return;
+  }
   try {
     const { data, error } = await supabase
       .from('amarracoes')
@@ -20,6 +25,7 @@ export async function fetchAmarracoesProducao() {
       .order('created_at', { ascending: false });
 
     if (error) throw error;
+    amarracoesCacheByDate[currentDateFilter] = data || [];
     amarracoesCache = data || [];
   } catch (error) {
     console.error('Error fetching amarracoes:', error);
@@ -132,7 +138,7 @@ export function bindAmarracoesProducaoEvents() {
     btnRefresh.addEventListener('click', async (e) => {
       e.currentTarget.disabled = true;
       e.currentTarget.innerHTML = 'Atualizando...';
-      await fetchAmarracoesProducao();
+      await fetchAmarracoesProducao(true);
       window.dispatchEvent(new Event('amarracoes_producao_changed'));
       showToast('Dados atualizados com sucesso!', 'success');
     });
@@ -154,7 +160,7 @@ export function bindAmarracoesProducaoEvents() {
         }
         
         showToast('Pacote excluído com sucesso!', 'success');
-        await fetchAmarracoesProducao();
+        await fetchAmarracoesProducao(true);
         window.dispatchEvent(new Event('amarracoes_producao_changed'));
       } catch (err) {
         console.error('Error deleting amarracao', err);

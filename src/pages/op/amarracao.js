@@ -4,11 +4,16 @@ import { openModal, closeModal, confirmDialog } from '../../components/modal.js'
 import { getBPLID } from '../../auth/auth.js';
 
 let amarracaoOps = [];
+let amarracaoOpsCacheByStatus = {};
 let sapItemsCache = [];
 let pedidosCache = [];
 let currentStatusFilter = 'Pendente'; // Default status to show
 
-export async function fetchAmarracaoOps() {
+export async function fetchAmarracaoOps(forceRefresh = false) {
+  if (!forceRefresh && amarracaoOpsCacheByStatus[currentStatusFilter]) {
+    amarracaoOps = amarracaoOpsCacheByStatus[currentStatusFilter];
+    return;
+  }
   try {
     let query = supabase
       .from('pcp_op_amarracao')
@@ -23,6 +28,7 @@ export async function fetchAmarracaoOps() {
     const { data, error } = await query;
 
     if (error) throw error;
+    amarracaoOpsCacheByStatus[currentStatusFilter] = data || [];
     amarracaoOps = data || [];
   } catch (error) {
     console.error('Error fetching Amarração OPs:', error);
@@ -203,7 +209,7 @@ export function bindAmarracaoEvents() {
       e.currentTarget.innerHTML = 'Atualizando...';
       pedidosCache = [];
       sapItemsCache = [];
-      await fetchAmarracaoOps();
+      await fetchAmarracaoOps(true);
       window.dispatchEvent(new Event('amarracao_created'));
       showToast('Dados atualizados com sucesso!', 'success');
     });
