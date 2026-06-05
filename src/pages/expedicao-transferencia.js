@@ -125,8 +125,8 @@ function showTransferenciaModal(editId = null) {
   }
 
   modalContainer.innerHTML = `
-    <div class="modal-backdrop fade-in" style="display: flex;">
-      <div class="modal-content slide-up" style="width: 900px; max-width: 95vw; height: 90vh; display: flex; flex-direction: column;">
+    <div class="modal-backdrop fade-in" style="position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center;">
+      <div class="modal-content slide-up" style="background: var(--color-surface); border-radius: var(--radius-lg); width: 100%; max-width: 900px; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
         
         <div class="modal-header">
           <h2 class="modal-title">${isEdit ? 'Editar Transferência #' + transf.id : 'Nova Transferência Interna'}</h2>
