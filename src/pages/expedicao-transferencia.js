@@ -2,7 +2,7 @@ import { getBPLID } from '../auth/auth.js';
 import { supabase } from '../config/supabase.js';
 import { showToast } from '../components/toast.js';
 import { confirmDialog } from '../components/modal.js';
-import { fetchRemessas, fetchLogisticaData, transferenciasCache, empresasCache, placasCache, motoristasCache } from './expedicao.js';
+import { fetchRemessas, fetchLogisticaData, transferenciasCache, empresasCache, placasCache, motoristasCache, getTransferenciasStatusFilter, setTransferenciasStatusFilter, renderExpedicao } from './expedicao.js';
 
 let expedicaoItemsCache = [];
 
@@ -53,10 +53,16 @@ export function renderTransferenciaInternaTab(canCreate, canEdit, canDelete) {
     `).join('');
   }
 
+  const currentFilter = getTransferenciasStatusFilter();
+
   return `
     <div class="toolbar" style="margin-bottom: var(--space-4); display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; justify-content: space-between;">
       <div class="toolbar-left" style="display: flex; flex-wrap: wrap; gap: var(--space-2); flex: 1;">
-        <h2 style="font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); color: var(--color-text);">Transferências Internas</h2>
+        <select id="transf-status-filter" class="filter-select" style="font-size: var(--font-size-sm); height: 34px; width: 160px;">
+          <option value="Todas" ${currentFilter === 'Todas' ? 'selected' : ''}>Todas as Transf.</option>
+          <option value="Ativa" ${currentFilter === 'Ativa' ? 'selected' : ''}>Ativas</option>
+          <option value="Concluída" ${currentFilter === 'Concluída' ? 'selected' : ''}>Concluídas</option>
+        </select>
       </div>
       <div class="flex" style="gap: 12px; margin-left: auto;">
         ${canCreate ? `
@@ -93,6 +99,15 @@ export function renderTransferenciaInternaTab(canCreate, canEdit, canDelete) {
 }
 
 export function bindTransferenciaEvents() {
+  const filterTransf = document.getElementById('transf-status-filter');
+  if (filterTransf) {
+    filterTransf.addEventListener('change', async (e) => {
+      setTransferenciasStatusFilter(e.target.value);
+      await fetchRemessas();
+      renderExpedicao();
+    });
+  }
+
   const btnNew = document.getElementById('btn-new-transf');
   if (btnNew) {
     btnNew.addEventListener('click', () => showTransferenciaModal());

@@ -16,6 +16,9 @@ export let transferenciasCache = [];
 let remessasStatusFilter = 'Todas';
 let transferenciasStatusFilter = 'Todas';
 
+export function getTransferenciasStatusFilter() { return transferenciasStatusFilter; }
+export function setTransferenciasStatusFilter(val) { transferenciasStatusFilter = val; }
+
 // Data caches for the form
 let pedidosCache = [];
 let sapItemsCache = []; // Will be used to resolve items later
