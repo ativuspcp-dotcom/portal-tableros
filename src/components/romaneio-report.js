@@ -280,7 +280,8 @@ export async function printRomaneioReport(ocId) {
                 <div class="item-meta">
                   PROGRAMADO: ${formatVol(expectedVol)} &nbsp;|&nbsp; 
                   CARREGADO: ${formatVol(actualVol)} &nbsp;|&nbsp; 
-                  TOTAL DE PACOTES: ${pkgsForThisItem.length}
+                  TOTAL DE PACOTES: ${pkgsForThisItem.length} &nbsp;|&nbsp;
+                  DESTINO: ${item.destino || '-'}
                 </div>
               </td>
             </tr>
