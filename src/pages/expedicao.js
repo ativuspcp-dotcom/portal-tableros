@@ -5,13 +5,16 @@ import { supabase } from '../config/supabase.js';
 import { getBPLID } from '../auth/auth.js';
 import { showToast } from '../components/toast.js';
 import { confirmDialog } from '../components/modal.js';
+import { renderTransferenciaInternaTab, bindTransferenciaEvents } from './expedicao-transferencia.js';
 
 // State
 let activeMainTab = sessionStorage.getItem('expedicaoActiveMainTab') || 'ordem_carregamento'; // 'dashboard', 'ordem_carregamento'
 let activeSubTab = sessionStorage.getItem('expedicaoActiveSubTab') || 'remessa_armazem'; // 'remessa_armazem'
 
 let remessasCache = [];
+export let transferenciasCache = [];
 let remessasStatusFilter = 'Todas';
+let transferenciasStatusFilter = 'Todas';
 
 // Data caches for the form
 let pedidosCache = [];
@@ -190,12 +193,17 @@ export async function renderExpedicao(container = document.getElementById('view-
                 style="font-size: var(--font-size-sm); font-weight: ${activeSubTab === 'remessa_armazem' ? '600' : '400'}; color: ${activeSubTab === 'remessa_armazem' ? 'var(--color-primary)' : 'var(--color-text-secondary)'}; border: none; background: transparent; border-bottom: 2px solid ${activeSubTab === 'remessa_armazem' ? 'var(--color-primary)' : 'transparent'}; padding-bottom: 4px; transition: all var(--transition-fast);">
                 Remessa para Armazém
               </button>
+              <button class="expedicao-sub-tab-btn ${activeSubTab === 'transferencia_interna' ? 'active' : ''}" data-subtab="transferencia_interna" 
+                style="font-size: var(--font-size-sm); font-weight: ${activeSubTab === 'transferencia_interna' ? '600' : '400'}; color: ${activeSubTab === 'transferencia_interna' ? 'var(--color-primary)' : 'var(--color-text-secondary)'}; border: none; background: transparent; border-bottom: 2px solid ${activeSubTab === 'transferencia_interna' ? 'var(--color-primary)' : 'transparent'}; padding-bottom: 4px; transition: all var(--transition-fast);">
+                Transf. Interna
+              </button>
             </div>
           ` : ''}
 
           <!-- Tab Content -->
           <div id="expedicao-tab-content">
             ${activeMainTab === 'ordem_carregamento' && activeSubTab === 'remessa_armazem' ? renderRemessaArmazemTab(canCreate, canEdit, canDelete) : ''}
+            ${activeMainTab === 'ordem_carregamento' && activeSubTab === 'transferencia_interna' ? renderTransferenciaInternaTab(canCreate, canEdit, canDelete) : ''}
           </div>
         </div>
       </div>
@@ -252,12 +260,17 @@ function bindExpedicaoEvents() {
       placasCache = [];
       reboquesCache = [];
       motoristasCache = [];
-      await fetchRemessas();
+      if (activeMainTab === 'ordem_carregamento') {
+        await fetchRemessas();
+      }
       renderExpedicao();
       showToast('Dados atualizados com sucesso!', 'success');
     });
   }
   
+  // Bind new events from Transferencia Interna tab
+  bindTransferenciaEvents();
+
   const filterRemessa = document.getElementById('remessa-status-filter');
   if (filterRemessa) {
     filterRemessa.addEventListener('change', async (e) => {
@@ -410,16 +423,26 @@ export async function fetchRemessas() {
     .eq('bplid', bplid)
     .order('created_at', { ascending: false });
     
-  if (remessasStatusFilter !== 'Todas') {
-    query = query.eq('status', remessasStatusFilter);
-  }
-  
   const { data, error } = await query;
   if (error) {
-    console.error('Error fetching remessas:', error);
+    console.error('Error fetching OCs:', error);
     showToast('Erro ao carregar Ordens de Carregamento', 'error');
   } else {
-    remessasCache = data.map(r => ({
+    // Separa as remessas e transferências na hora de carregar para facilitar as abas
+    let remessasData = data.filter(r => !r.tipo || r.tipo === 'remessa_armazem');
+    if (remessasStatusFilter !== 'Todas') {
+      remessasData = remessasData.filter(r => r.status === remessasStatusFilter);
+    }
+    remessasCache = remessasData.map(r => ({
+      ...r,
+      itens_count: r.expedicao_ordens_carregamento_itens ? r.expedicao_ordens_carregamento_itens.length : 0
+    }));
+
+    let transfData = data.filter(r => r.tipo === 'transferencia_interna');
+    if (transferenciasStatusFilter !== 'Todas') {
+      transfData = transfData.filter(r => r.status === transferenciasStatusFilter);
+    }
+    transferenciasCache = transfData.map(r => ({
       ...r,
       itens_count: r.expedicao_ordens_carregamento_itens ? r.expedicao_ordens_carregamento_itens.length : 0
     }));
@@ -1219,7 +1242,7 @@ async function saveRemessa(isEdit, editId) {
 
 // Global listener to fetch data initially if needed
 window.addEventListener('branch_changed', async () => {
-  if (activeMainTab === 'ordem_carregamento' && activeSubTab === 'remessa_armazem') {
+  if (activeMainTab === 'ordem_carregamento') {
     await fetchRemessas();
     renderExpedicao();
   }
