@@ -145,8 +145,13 @@ export function bindAmarracoesProducaoEvents() {
       if (!confirmed) return;
       
       try {
-        const { error } = await supabase.from('amarracoes').delete().eq('id', id);
+        const { data, error } = await supabase.from('amarracoes').delete().eq('id', id).select();
         if (error) throw error;
+        
+        if (!data || data.length === 0) {
+          showToast('Permissão negada ou pacote não encontrado. O banco de dados recusou a exclusão.', 'error');
+          return;
+        }
         
         showToast('Pacote excluído com sucesso!', 'success');
         await fetchAmarracoesProducao();
