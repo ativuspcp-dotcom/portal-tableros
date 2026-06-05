@@ -20,27 +20,33 @@ export async function fetchExpedicaoItems() {
 }
 
 export function renderTransferenciaInternaTab(canCreate, canEdit, canDelete) {
-  let tbody = `<tr><td colspan="6" style="text-align: center; padding: var(--space-8); color: var(--color-text-secondary);">Nenhuma transferência interna encontrada.</td></tr>`;
+  let tbody = `<tr><td colspan="8" style="text-align: center; padding: var(--space-8); color: var(--color-text-secondary);">Nenhuma transferência interna encontrada.</td></tr>`;
   
   if (transferenciasCache && transferenciasCache.length > 0) {
     tbody = transferenciasCache.map(t => `
       <tr class="table-row-hover">
-        <td style="font-family: monospace; font-weight: var(--font-weight-semibold);">${t.id}</td>
-        <td>${new Date(t.previsao_carga).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</td>
-        <td style="font-weight: 500;">${t.local_partida || '-'} &rarr; ${t.local_destino || '-'}</td>
-        <td>${t.transportadora || '-'} (${t.placa || '-'})</td>
-        <td style="text-align: center;"><span class="badge" style="background: var(--color-surface-alt);">${t.itens_count || 0} itens</span></td>
+        <td style="font-weight: 500;">${t.codigo_oc || '-'}</td>
+        <td>${new Date(t.previsao_carga).toLocaleString('pt-BR')}</td>
+        <td>${t.local_partida || '-'} &rarr; ${t.local_destino || '-'}</td>
+        <td>${t.transportadora || '-'}</td>
+        <td>${t.placa || '-'}</td>
+        <td>${t.itens_count || 0}</td>
+        <td>
+          <span class="badge" style="background: ${t.status === 'Ativa' ? 'var(--color-primary-light)' : 'var(--color-surface-alt)'}; color: ${t.status === 'Ativa' ? 'var(--color-primary)' : 'var(--color-text-secondary)'}; border: 1px solid ${t.status === 'Ativa' ? 'var(--color-primary)' : 'var(--color-border)'};">
+            ${t.status || 'Ativa'}
+          </span>
+        </td>
         <td style="text-align: right;">
           <button class="btn btn-sm btn-icon btn-view-transf" data-id="${t.id}" title="Ver">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
           </button>
           ${canEdit ? `
           <button class="btn btn-sm btn-icon btn-edit-transf" data-id="${t.id}" title="Editar">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
           </button>` : ''}
           ${canDelete ? `
           <button class="btn btn-sm btn-icon btn-delete-transf" data-id="${t.id}" title="Excluir" style="color: var(--color-danger);">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
           </button>` : ''}
         </td>
       </tr>
@@ -48,25 +54,33 @@ export function renderTransferenciaInternaTab(canCreate, canEdit, canDelete) {
   }
 
   return `
-    <div class="card" style="padding: var(--space-4);">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4);">
+    <div class="toolbar" style="margin-bottom: var(--space-4); display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; justify-content: space-between;">
+      <div class="toolbar-left" style="display: flex; flex-wrap: wrap; gap: var(--space-2); flex: 1;">
         <h2 style="font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); color: var(--color-text);">Transferências Internas</h2>
+      </div>
+      <div class="flex" style="gap: 12px; margin-left: auto;">
         ${canCreate ? `
         <button id="btn-new-transf" class="btn btn-primary">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
           Nova Transferência
-        </button>` : ''}
+        </button>
+        ` : ''}
       </div>
-      <div class="table-container">
+    </div>
+
+    <div class="card" style="border-color: var(--color-border); background: var(--color-surface); display: flex; flex-direction: column; padding: 0; overflow: hidden;">
+      <div class="table-container" style="flex: 1;">
         <table class="table">
           <thead>
             <tr>
-              <th style="width: 80px;">OC ID</th>
-              <th>Data/Hora</th>
-              <th>Rota (Partida &rarr; Destino)</th>
-              <th>Transporte</th>
-              <th style="text-align: center;">Qtd (m³)</th>
-              <th style="text-align: right; width: 140px;">Ações</th>
+              <th style="font-size: var(--font-size-xs);">OC</th>
+              <th style="font-size: var(--font-size-xs);">Previsão</th>
+              <th style="font-size: var(--font-size-xs);">Rota</th>
+              <th style="font-size: var(--font-size-xs);">Transportadora</th>
+              <th style="font-size: var(--font-size-xs);">Placa</th>
+              <th style="font-size: var(--font-size-xs);">Qtd Itens</th>
+              <th style="font-size: var(--font-size-xs);">Status</th>
+              <th style="text-align: right; font-size: var(--font-size-xs);">Ações</th>
             </tr>
           </thead>
           <tbody>
@@ -146,32 +160,32 @@ function showTransferenciaModal(editId = null) {
             <h3 style="font-size: var(--font-size-base); color: var(--color-text); margin-bottom: var(--space-3); padding-bottom: var(--space-2); border-bottom: 1px solid var(--color-border-light);">Cabeçalho da Transferência</h3>
             
             <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-3); margin-bottom: var(--space-5);">
-              <div>
+              <div class="form-group">
                 <label class="form-label">Data Prevista <span style="color: var(--color-danger);">*</span></label>
                 <input type="datetime-local" id="tf-previsao" class="form-input" required>
               </div>
-              <div>
+              <div class="form-group">
                 <label class="form-label">Transportadora</label>
                 <select id="tf-transportadora" class="form-select">
                   <option value="">Selecione...</option>
                   ${empresasCache.map(e => `<option value="${e.nome_fantasia}" data-cnpj="${e.cnpj}" data-cod="${e.card_code}" ${transf && transf.transportadora === e.nome_fantasia ? 'selected' : ''}>${e.nome_fantasia} (${e.cnpj})</option>`).join('')}
                 </select>
               </div>
-              <div>
+              <div class="form-group">
                 <label class="form-label">Placa do Veículo</label>
                 <select id="tf-placa" class="form-select">
                   <option value="">Selecione...</option>
                   ${placasCache.map(p => `<option value="${p.placa}" ${transf && transf.placa === p.placa ? 'selected' : ''}>${p.placa}</option>`).join('')}
                 </select>
               </div>
-              <div>
+              <div class="form-group">
                 <label class="form-label">Motorista</label>
                 <select id="tf-motorista" class="form-select">
                   <option value="">Selecione...</option>
                   ${motoristasCache.map(m => `<option value="${m.nome}" ${transf && transf.motorista === m.nome ? 'selected' : ''}>${m.nome}</option>`).join('')}
                 </select>
               </div>
-              <div>
+              <div class="form-group">
                 <label class="form-label">Local de Partida <span style="color: var(--color-danger);">*</span></label>
                 <select id="tf-local-partida" class="form-select" required>
                   <option value="">Selecione...</option>
@@ -180,7 +194,7 @@ function showTransferenciaModal(editId = null) {
                   <option value="PLUS">PLUS</option>
                 </select>
               </div>
-              <div>
+              <div class="form-group">
                 <label class="form-label">Local de Destino <span style="color: var(--color-danger);">*</span></label>
                 <select id="tf-local-destino" class="form-select" required>
                   <option value="">Selecione...</option>
@@ -333,7 +347,7 @@ function addTransferenciaItemRow(existingItem = null) {
     </td>
     <td style="text-align: center;">
       <button type="button" class="btn btn-sm btn-icon btn-remove-tf-item" title="Remover" style="color: var(--color-danger);">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
       </button>
     </td>
   `;
