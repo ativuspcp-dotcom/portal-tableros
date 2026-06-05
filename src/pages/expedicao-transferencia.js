@@ -523,7 +523,8 @@ async function saveTransferencia(isEdit, editId) {
       placa: document.getElementById('tf-placa').value || null,
       motorista: document.getElementById('tf-motorista').value || null,
       local_partida: localPartida,
-      local_destino: localDestino
+      local_destino: localDestino,
+      liberado_carregamento: true
     };
     
     if (isEdit) {
