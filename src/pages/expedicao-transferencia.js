@@ -280,7 +280,6 @@ function addTransferenciaItemRow(existingItem = null) {
     <td style="text-align: center; color: var(--color-text-secondary);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg></td>
     <td style="position: relative;">
       <input type="text" class="form-input tf-item-input" placeholder="Digite para buscar..." autocomplete="off" required style="width: 100%;">
-      <div class="tf-item-dropdown" style="display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); box-shadow: 0 4px 12px rgba(0,0,0,0.15); max-height: 250px; overflow-y: auto; z-index: 9999;"></div>
     </td>
     <td>
       <select class="form-select tf-tipo-select" style="width: 100%;" required>
@@ -304,11 +303,22 @@ function addTransferenciaItemRow(existingItem = null) {
   
   // Custom dropdown logic
   const inputItem = tr.querySelector('.tf-item-input');
-  const dropdownItem = tr.querySelector('.tf-item-dropdown');
+  const dropdownItem = document.createElement('div');
+  dropdownItem.className = 'tf-item-dropdown';
+  dropdownItem.style.cssText = 'display: none; position: fixed; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); box-shadow: 0 4px 12px rgba(0,0,0,0.15); max-height: 250px; overflow-y: auto; z-index: 999999;';
+  document.body.appendChild(dropdownItem);
+
   const options = expedicaoItemsCache.map(i => {
     const display = i.ForeignName || i.ItemName;
     return { text: `${i.ItemCode} - ${display}` };
   });
+
+  function positionDropdown() {
+    const rect = inputItem.getBoundingClientRect();
+    dropdownItem.style.top = (rect.bottom + 4) + 'px';
+    dropdownItem.style.left = rect.left + 'px';
+    dropdownItem.style.width = rect.width + 'px';
+  }
 
   function renderDropdown(filterText = '') {
     const lowerFilter = filterText.toLowerCase();
@@ -334,11 +344,13 @@ function addTransferenciaItemRow(existingItem = null) {
   }
 
   inputItem.addEventListener('focus', () => {
+    positionDropdown();
     renderDropdown(inputItem.value);
     dropdownItem.style.display = 'block';
   });
 
   inputItem.addEventListener('input', () => {
+    positionDropdown();
     renderDropdown(inputItem.value);
     dropdownItem.style.display = 'block';
   });
@@ -346,8 +358,19 @@ function addTransferenciaItemRow(existingItem = null) {
   inputItem.addEventListener('blur', () => {
     dropdownItem.style.display = 'none';
   });
+  
+  // Hide on scroll to prevent detached floating
+  const modalBody = document.getElementById('transf-modal-container')?.querySelector('.modal-body');
+  if (modalBody) {
+    modalBody.addEventListener('scroll', () => {
+      dropdownItem.style.display = 'none';
+    }, { passive: true });
+  }
 
   tr.querySelector('.btn-remove-tf-item').addEventListener('click', () => {
+    if (dropdownItem && dropdownItem.parentNode) {
+      dropdownItem.parentNode.removeChild(dropdownItem);
+    }
     tr.remove();
     if (tbody.children.length === 0) {
       document.getElementById('tf-empty-state').style.display = 'block';
