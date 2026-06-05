@@ -3,6 +3,7 @@ import { supabase } from '../config/supabase.js';
 import { showToast } from '../components/toast.js';
 import { confirmDialog } from '../components/modal.js';
 import { fetchRemessas, fetchLogisticaData, transferenciasCache, empresasCache, placasCache, motoristasCache, getTransferenciasStatusFilter, setTransferenciasStatusFilter, renderExpedicao } from './expedicao.js';
+import { printRomaneioReport } from '../components/romaneio-report.js';
 
 let expedicaoItemsCache = [];
 
@@ -113,10 +114,17 @@ export function bindTransferenciaEvents() {
     btnNew.addEventListener('click', () => showTransferenciaModal());
   }
 
-  document.querySelectorAll('.btn-view-transf, .btn-edit-transf').forEach(btn => {
+  document.querySelectorAll('.btn-edit-transf').forEach(btn => {
     btn.addEventListener('click', (e) => {
       const id = e.currentTarget.dataset.id;
       showTransferenciaModal(id);
+    });
+  });
+
+  document.querySelectorAll('.btn-view-transf').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const id = e.currentTarget.dataset.id;
+      printRomaneioReport(id);
     });
   });
 

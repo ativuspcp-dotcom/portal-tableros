@@ -6,6 +6,7 @@ import { getBPLID } from '../auth/auth.js';
 import { showToast } from '../components/toast.js';
 import { confirmDialog } from '../components/modal.js';
 import { renderTransferenciaInternaTab, bindTransferenciaEvents } from './expedicao-transferencia.js';
+import { printRomaneioReport } from '../components/romaneio-report.js';
 
 // State
 let activeMainTab = sessionStorage.getItem('expedicaoActiveMainTab') || 'ordem_carregamento'; // 'dashboard', 'ordem_carregamento'
@@ -284,6 +285,13 @@ function bindExpedicaoEvents() {
   }
 
   // Table Row Events
+  document.querySelectorAll('.btn-view-remessa').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const id = e.currentTarget.dataset.id;
+      printRomaneioReport(id);
+    });
+  });
+
   document.querySelectorAll('.btn-edit-remessa').forEach(btn => {
     btn.addEventListener('click', (e) => {
       const id = e.currentTarget.dataset.id;
