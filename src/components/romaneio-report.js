@@ -1,6 +1,17 @@
 import { supabase } from '../config/supabase.js';
 
 export async function printRomaneioReport(ocId) {
+  // Open window synchronously to avoid popup blockers and ensure consistent tab/window behavior
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) {
+    alert('Por favor, permita pop-ups no navegador para visualizar o relatório.');
+    return;
+  }
+  
+  // Show a loading state while fetching data
+  printWindow.document.write('<html><head><title>Carregando Relatório...</title><style>body { font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background: #f8f9fa; color: #555; }</style></head><body><h2>Buscando dados no servidor...</h2></body></html>');
+  printWindow.document.close();
+
   try {
     // 1. Fetch OC details
     const { data: oc, error: ocError } = await supabase
@@ -294,18 +305,14 @@ export async function printRomaneioReport(ocId) {
       </html>
     `;
 
-    // Open in a new popup window and DO NOT auto-print
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.open();
-      printWindow.document.write(html);
-      printWindow.document.close();
-    } else {
-      alert('Por favor, permita pop-ups no navegador para visualizar o relatório.');
-    }
+    // Overwrite the loading screen with the actual report
+    printWindow.document.open();
+    printWindow.document.write(html);
+    printWindow.document.close();
 
   } catch (err) {
     console.error('Erro ao gerar relatório de romaneio:', err);
+    printWindow.close();
     alert('Erro ao gerar relatório: ' + err.message);
   }
 }
