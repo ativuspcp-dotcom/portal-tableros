@@ -65,7 +65,7 @@ export function renderTransferenciaInternaTab(canCreate, canEdit, canDelete) {
               <th>Data/Hora</th>
               <th>Rota (Partida &rarr; Destino)</th>
               <th>Transporte</th>
-              <th style="text-align: center;">Volumes</th>
+              <th style="text-align: center;">Qtd (m³)</th>
               <th style="text-align: right; width: 140px;">Ações</th>
             </tr>
           </thead>
@@ -196,7 +196,7 @@ function showTransferenciaModal(editId = null) {
                   <th style="width: 40px;"></th>
                   <th>Item</th>
                   <th style="width: 150px;">Tipo</th>
-                  <th style="width: 150px;">Qtd (Volumes)</th>
+                  <th style="width: 150px;">Qtd (m³)</th>
                   <th style="width: 60px;">Ações</th>
                 </tr>
               </thead>
@@ -207,6 +207,8 @@ function showTransferenciaModal(editId = null) {
             <div id="tf-empty-state" style="text-align: center; padding: var(--space-6); color: var(--color-text-secondary); border: 1px dashed var(--color-border); border-radius: var(--radius-md); margin-top: var(--space-2);">
               Nenhum item adicionado à transferência.
             </div>
+
+            <datalist id="tf-items-list"></datalist>
 
           </form>
         </div>
@@ -228,6 +230,14 @@ async function initTransferenciaForm(isEdit, transf) {
   overlay.style.display = 'flex';
   
   await fetchExpedicaoItems();
+  
+  const datalist = document.getElementById('tf-items-list');
+  if (datalist) {
+    datalist.innerHTML = expedicaoItemsCache.map(i => {
+      const display = i.ForeignName || i.ItemName;
+      return `<option value="${i.ItemCode} - ${display}"></option>`;
+    }).join('');
+  }
   
   document.getElementById('btn-add-tf-item').addEventListener('click', () => {
     addTransferenciaItemRow();
@@ -279,13 +289,7 @@ function addTransferenciaItemRow(existingItem = null) {
   tr.innerHTML = `
     <td style="text-align: center; color: var(--color-text-secondary);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg></td>
     <td>
-      <select class="form-select tf-item-select" style="width: 100%;" required>
-        <option value="">Selecione o Item...</option>
-        ${expedicaoItemsCache.map(i => {
-          const display = i.ForeignName || i.ItemName;
-          return `<option value="${i.ItemCode}" data-name="${display}">${i.ItemCode} - ${display}</option>`;
-        }).join('')}
-      </select>
+      <input type="text" class="form-input tf-item-input" list="tf-items-list" placeholder="Digite para buscar..." autocomplete="off" required style="width: 100%;">
     </td>
     <td>
       <select class="form-select tf-tipo-select" style="width: 100%;" required>
@@ -304,7 +308,7 @@ function addTransferenciaItemRow(existingItem = null) {
   `;
   
   if (existingItem) {
-    tr.querySelector('.tf-item-select').value = existingItem.item_code;
+    tr.querySelector('.tf-item-input').value = existingItem.item_code + ' - ' + (existingItem.item_name || '');
   }
   
   tr.querySelector('.btn-remove-tf-item').addEventListener('click', () => {
@@ -337,14 +341,20 @@ async function saveTransferencia(isEdit, editId) {
   
   const itens = [];
   for (const tr of rows) {
-    const itemSelect = tr.querySelector('.tf-item-select');
-    const itemCode = itemSelect.value;
-    const itemName = itemSelect.selectedOptions[0] ? itemSelect.selectedOptions[0].dataset.name : '';
+    const itemInput = tr.querySelector('.tf-item-input').value.trim();
+    if (!itemInput) {
+      showToast('Selecione um item em todas as linhas.', 'error');
+      return;
+    }
+    
+    const parts = itemInput.split(' - ');
+    const itemCode = parts[0];
+    const itemName = parts.slice(1).join(' - ');
     const tipo = tr.querySelector('.tf-tipo-select').value;
     const qtdProg = tr.querySelector('.tf-qtd-prog').value;
     
     if (!itemCode) {
-      showToast('Selecione um item em todas as linhas.', 'error');
+      showToast('Selecione um item válido em todas as linhas.', 'error');
       return;
     }
     
