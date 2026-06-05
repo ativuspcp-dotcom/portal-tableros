@@ -7,6 +7,7 @@ import { showToast } from '../components/toast.js';
 import { hasModuleAccess } from '../utils/permissions.js';
 import { fetchAmarracaoOps, renderAmarracaoView, bindAmarracaoEvents } from './op/amarracao.js';
 import { fetchEstoqueCompAcabado, renderEstoqueCompAcabadoView, renderEstoqueDashboard, bindEstoqueCompAcabadoEvents } from './estoque/comp-acabado.js';
+import { fetchAmarracoesProducao, renderAmarracoesProducaoView, bindAmarracoesProducaoEvents } from './producao/amarracoes.js';
 
 window.addEventListener('amarracao_created', () => {
   if (activeMainTab === 'op' && activeOpSubTab === 'amarracao') {
@@ -14,9 +15,15 @@ window.addEventListener('amarracao_created', () => {
   }
 });
 
+window.addEventListener('amarracoes_producao_changed', () => {
+  if (activeMainTab === 'producao' && activeSubTab === 'amarracoes') {
+    renderPCP();
+  }
+});
+
 // State
-let activeMainTab = sessionStorage.getItem('pcpActiveMainTab') || 'cadastro'; // 'cadastro', 'estrutura', 'op', 'mrp', 'estoque'
-let activeSubTab = sessionStorage.getItem('pcpActiveSubTab') || 'lamina_verde'; // 'lamina_verde', 'lamina_seca', 'compensado_inacabado', 'compensado_acabado', 'estoque_comp_acabado'
+let activeMainTab = sessionStorage.getItem('pcpActiveMainTab') || 'producao'; // 'cadastro', 'estrutura', 'op', 'mrp', 'estoque', 'producao'
+let activeSubTab = sessionStorage.getItem('pcpActiveSubTab') || 'amarracoes'; // 'lamina_verde', 'lamina_seca', 'compensado_inacabado', 'compensado_acabado', 'estoque_comp_acabado', 'amarracoes'
 let activeOpSubTab = sessionStorage.getItem('pcpActiveOpSubTab') || 'laminacao'; 
 let items = [];
 let filteredItems = [];
@@ -70,6 +77,10 @@ export async function renderPCP(container = document.getElementById('view-pcp') 
               style="padding: var(--space-2) var(--space-4); border-radius: var(--radius-md) var(--radius-md) 0 0; font-weight: var(--font-weight-semibold); border: 1px solid ${activeMainTab === 'op' ? 'var(--color-border)' : 'transparent'}; border-bottom: 1px solid ${activeMainTab === 'op' ? 'var(--color-surface)' : 'transparent'}; color: ${activeMainTab === 'op' ? 'var(--color-primary)' : 'var(--color-text-secondary)'}; background: ${activeMainTab === 'op' ? 'var(--color-surface)' : 'transparent'}; margin-bottom: -1px; font-size: var(--font-size-base); transition: all var(--transition-fast);">
               Ordens de Produção (OP)
             </button>
+            <button class="pcp-main-tab-btn ${activeMainTab === 'producao' ? 'active' : ''}" data-tab="producao" 
+              style="padding: var(--space-2) var(--space-4); border-radius: var(--radius-md) var(--radius-md) 0 0; font-weight: var(--font-weight-semibold); border: 1px solid ${activeMainTab === 'producao' ? 'var(--color-border)' : 'transparent'}; border-bottom: 1px solid ${activeMainTab === 'producao' ? 'var(--color-surface)' : 'transparent'}; color: ${activeMainTab === 'producao' ? 'var(--color-primary)' : 'var(--color-text-secondary)'}; background: ${activeMainTab === 'producao' ? 'var(--color-surface)' : 'transparent'}; margin-bottom: -1px; font-size: var(--font-size-base); transition: all var(--transition-fast);">
+              Produção
+            </button>
             <button class="pcp-main-tab-btn ${activeMainTab === 'mrp' ? 'active' : ''}" data-tab="mrp" 
               style="padding: var(--space-2) var(--space-4); border-radius: var(--radius-md) var(--radius-md) 0 0; font-weight: var(--font-weight-semibold); border: 1px solid ${activeMainTab === 'mrp' ? 'var(--color-border)' : 'transparent'}; border-bottom: 1px solid ${activeMainTab === 'mrp' ? 'var(--color-surface)' : 'transparent'}; color: ${activeMainTab === 'mrp' ? 'var(--color-primary)' : 'var(--color-text-secondary)'}; background: ${activeMainTab === 'mrp' ? 'var(--color-surface)' : 'transparent'}; margin-bottom: -1px; font-size: var(--font-size-base); transition: all var(--transition-fast);">
               Necessidades (MRP)
@@ -98,6 +109,13 @@ export async function renderPCP(container = document.getElementById('view-pcp') 
               <button class="pcp-sub-tab-btn ${activeSubTab === 'compensado_acabado' ? 'active' : ''}" data-subtab="compensado_acabado" 
                 style="font-size: var(--font-size-sm); font-weight: ${activeSubTab === 'compensado_acabado' ? '600' : '400'}; color: ${activeSubTab === 'compensado_acabado' ? 'var(--color-primary)' : 'var(--color-text-secondary)'}; border: none; background: transparent; border-bottom: 2px solid ${activeSubTab === 'compensado_acabado' ? 'var(--color-primary)' : 'transparent'}; padding-bottom: 4px; transition: all var(--transition-fast);">
                 Compensados Acabados
+              </button>
+            </div>
+          ` : activeMainTab === 'producao' ? `
+            <div class="pcp-sub-tabs" style="display: flex; gap: var(--space-4); margin-bottom: var(--space-4); border-bottom: 1px solid var(--color-border-light); padding-bottom: var(--space-2); padding-left: var(--space-2);">
+              <button class="pcp-sub-tab-btn ${activeSubTab === 'amarracoes' || !activeSubTab.startsWith('estoque_') && activeSubTab !== 'lamina_verde' && activeSubTab !== 'lamina_seca' && activeSubTab !== 'compensado_inacabado' && activeSubTab !== 'compensado_acabado' ? 'active' : ''}" data-subtab="amarracoes" 
+                style="font-size: var(--font-size-sm); font-weight: ${activeSubTab === 'amarracoes' || !activeSubTab.startsWith('estoque_') && activeSubTab !== 'lamina_verde' && activeSubTab !== 'lamina_seca' && activeSubTab !== 'compensado_inacabado' && activeSubTab !== 'compensado_acabado' ? '600' : '400'}; color: ${activeSubTab === 'amarracoes' || !activeSubTab.startsWith('estoque_') && activeSubTab !== 'lamina_verde' && activeSubTab !== 'lamina_seca' && activeSubTab !== 'compensado_inacabado' && activeSubTab !== 'compensado_acabado' ? 'var(--color-primary)' : 'var(--color-text-secondary)'}; border: none; background: transparent; border-bottom: 2px solid ${activeSubTab === 'amarracoes' || !activeSubTab.startsWith('estoque_') && activeSubTab !== 'lamina_verde' && activeSubTab !== 'lamina_seca' && activeSubTab !== 'compensado_inacabado' && activeSubTab !== 'compensado_acabado' ? 'var(--color-primary)' : 'transparent'}; padding-bottom: 4px; transition: all var(--transition-fast);">
+                Amarrações de Pacotes
               </button>
             </div>
           ` : activeMainTab === 'op' ? `
@@ -155,6 +173,16 @@ export async function renderPCP(container = document.getElementById('view-pcp') 
         renderEstoqueDashboard();
       }
     });
+  } else if (activeMainTab === 'producao' && (activeSubTab === 'amarracoes' || !activeSubTab.startsWith('estoque_'))) {
+    document.getElementById('pcp-tab-content').innerHTML = renderActiveTabView();
+    bindAmarracoesProducaoEvents();
+    
+    fetchAmarracoesProducao().then(() => {
+      if (activeMainTab === 'producao') {
+        document.getElementById('pcp-tab-content').innerHTML = renderActiveTabView();
+        bindAmarracoesProducaoEvents();
+      }
+    });
   }
 }
 
@@ -165,6 +193,12 @@ function renderActiveTabView() {
   // If in estoque tab
   if (activeMainTab === 'estoque') {
     return renderEstoqueCompAcabadoView();
+  }
+  
+  if (activeMainTab === 'producao') {
+    if (activeSubTab === 'amarracoes' || (!activeSubTab.startsWith('estoque_') && activeSubTab !== 'lamina_verde' && activeSubTab !== 'lamina_seca' && activeSubTab !== 'compensado_inacabado' && activeSubTab !== 'compensado_acabado')) {
+      return renderAmarracoesProducaoView();
+    }
   }
 
   // If not in items registration tab
@@ -324,18 +358,22 @@ function renderActiveTabView() {
   `;
 }
 
-/**
- * Bind main tabs, sub tabs and table events
- */
+/// Events
 function bindPCPEvents() {
-  // Main level 1 tabs
+  // Main tabs
   document.querySelectorAll('.pcp-main-tab-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const tab = btn.dataset.tab;
-      if (activeMainTab === tab) return;
-      activeMainTab = tab;
-      sessionStorage.setItem('pcpActiveMainTab', activeMainTab);
-      renderPCP();
+    btn.addEventListener('click', (e) => {
+      const targetTab = e.currentTarget.dataset.tab;
+      if (targetTab !== activeMainTab) {
+        activeMainTab = targetTab;
+        if (activeMainTab === 'cadastro') activeSubTab = 'lamina_verde';
+        if (activeMainTab === 'estoque') activeSubTab = 'estoque_comp_acabado';
+        if (activeMainTab === 'producao') activeSubTab = 'amarracoes';
+        
+        sessionStorage.setItem('pcpActiveMainTab', activeMainTab);
+        sessionStorage.setItem('pcpActiveSubTab', activeSubTab);
+        renderPCP();
+      }
     });
   });
 
