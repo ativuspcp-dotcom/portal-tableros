@@ -269,7 +269,6 @@ async function initTransferenciaForm(isEdit, transf) {
     await saveTransferencia(isEdit, editId);
   });
   
-  const selectTransp = document.getElementById('tf-transportadora');
   const selectPlaca = document.getElementById('tf-placa');
   const selectMotorista = document.getElementById('tf-motorista');
   selectTransp.addEventListener('change', () => {
