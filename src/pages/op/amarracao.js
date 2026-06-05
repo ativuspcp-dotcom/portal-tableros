@@ -141,8 +141,8 @@ export function renderAmarracaoView() {
     </div>
   `;
 
-  return \`
-    \${kpisHtml}
+  return `
+    ${kpisHtml}
     <!-- Search/Filters toolbar -->
     <div class="toolbar" style="margin-bottom: var(--space-4); display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; justify-content: space-between;">
       <div class="toolbar-left" style="display: flex; flex-wrap: wrap; gap: var(--space-2); flex: 1;">
