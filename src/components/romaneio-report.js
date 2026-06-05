@@ -47,7 +47,7 @@ export async function printRomaneioReport(ocId) {
 
     const isTransfer = oc.tipo === 'transferencia_interna';
     const reportTitle = isTransfer ? 'Relatório de Transferência Interna' : 'Romaneio de Expedição';
-    const destinoRemessa = !isTransfer && ocItems.length > 0 && ocItems[0].destino ? ocItems[0].destino : '-';
+    const destinoRemessa = !isTransfer && ocItems.length > 0 && ocItems[0].armazem ? `${ocItems[0].armazem} - ${ocItems[0].cod_pn || ''}` : '-';
 
     const formatVol = (val) => Number(val || 0).toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 });
     const formatPeso = (val) => Number(val || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -281,7 +281,7 @@ export async function printRomaneioReport(ocId) {
                   PROGRAMADO: ${formatVol(expectedVol)} &nbsp;|&nbsp; 
                   CARREGADO: ${formatVol(actualVol)} &nbsp;|&nbsp; 
                   TOTAL DE PACOTES: ${pkgsForThisItem.length} &nbsp;|&nbsp;
-                  DESTINO: ${item.destino || '-'}
+                  DESTINO: ${item.armazem ? item.armazem + ' - ' + (item.cod_pn || '') : '-'}
                 </div>
               </td>
             </tr>
