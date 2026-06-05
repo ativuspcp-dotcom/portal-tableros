@@ -59,6 +59,13 @@ export async function printRomaneioReport(ocId) {
     const formatVol = (val) => Number(val || 0).toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 });
     const formatPeso = (val) => Number(val || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+    let precalcVolume = 0;
+    let precalcPeso = 0;
+    if (scannedPkgs && scannedPkgs.length > 0) {
+      precalcVolume = scannedPkgs.reduce((sum, p) => sum + (Number(p.quantidade) || 0), 0);
+      precalcPeso = scannedPkgs.reduce((sum, p) => sum + (Number(p.peso) || 0), 0);
+    }
+
     // Build Report HTML
     let html = `
       <!DOCTYPE html>
@@ -239,8 +246,12 @@ export async function printRomaneioReport(ocId) {
             </div>
           `}
           <div class="info-item">
-            <span class="info-label">Peso Máximo (kg)</span>
-            <span class="info-val">${oc.peso_maximo ? formatPeso(oc.peso_maximo) : 'Sem Limite'}</span>
+            <span class="info-label">Quantidade Total</span>
+            <span class="info-val">${formatVol(precalcVolume)}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Peso Total (kg)</span>
+            <span class="info-val">${formatPeso(precalcPeso)}</span>
           </div>
         </div>
 
