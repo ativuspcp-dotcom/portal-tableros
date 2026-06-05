@@ -183,7 +183,7 @@ export async function printRomaneioReport(ocId) {
           <div class="header-text">
             <h1>${reportTitle}</h1>
             <div class="oc-code">CÓD: ${oc.codigo_oc || oc.id.substring(0,8).toUpperCase()}</div>
-            <div style="font-size: 10px; color: var(--text-muted); margin-top: 2px;">Data de Emissão: ${new Date().toLocaleDateString('pt-BR')}</div>
+            <div style="font-size: 10px; color: var(--text-muted); margin-top: 2px;">Impresso em: ${new Date().toLocaleString('pt-BR')}</div>
           </div>
         </div>
 
@@ -219,10 +219,18 @@ export async function printRomaneioReport(ocId) {
               <span class="info-val">${oc.status || '-'}</span>
             </div>
           `}
-          <div class="info-item">
-            <span class="info-label">Previsão de Carga</span>
-            <span class="info-val">${oc.previsao_carga ? new Date(oc.previsao_carga).toLocaleString('pt-BR') : '-'}</span>
-          </div>
+          
+          ${oc.status === 'Finalizada' && scannedPkgs && scannedPkgs.length > 0 ? `
+            <div class="info-item">
+              <span class="info-label">Finalizado Em</span>
+              <span class="info-val">${new Date(Math.max(...scannedPkgs.map(p => new Date(p.created_at)))).toLocaleString('pt-BR')}</span>
+            </div>
+          ` : `
+            <div class="info-item">
+              <span class="info-label">Previsão de Carga</span>
+              <span class="info-val">${oc.previsao_carga ? new Date(oc.previsao_carga).toLocaleString('pt-BR') : '-'}</span>
+            </div>
+          `}
           <div class="info-item">
             <span class="info-label">Peso Máximo (kg)</span>
             <span class="info-val">${oc.peso_maximo ? formatPeso(oc.peso_maximo) : 'Sem Limite'}</span>
