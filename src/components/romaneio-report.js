@@ -47,6 +47,10 @@ export async function printRomaneioReport(ocId) {
 
     const isTransfer = oc.tipo === 'transferencia_interna';
     const reportTitle = isTransfer ? 'Relatório de Transferência Interna' : 'Romaneio de Expedição';
+    const destinoRemessa = !isTransfer && ocItems.length > 0 && ocItems[0].destino ? ocItems[0].destino : '-';
+
+    const formatVol = (val) => Number(val || 0).toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 });
+    const formatPeso = (val) => Number(val || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     // Build Report HTML
     let html = `
@@ -132,7 +136,7 @@ export async function printRomaneioReport(ocId) {
           .pkg-row td.numeric { text-align: right; font-family: 'Roboto', sans-serif; font-size: 10px; }
           .pkg-row td.center { text-align: center; font-family: 'Roboto', sans-serif; }
 
-          tfoot tr td {
+          .total-row td {
             font-size: 11px;
             font-weight: 700;
             background: #f1f3f4 !important;
@@ -162,7 +166,7 @@ export async function printRomaneioReport(ocId) {
             th { background: transparent; border-bottom: 1px solid #000; color: #000; }
             td { border-bottom: 1px solid #eee; }
             .item-group-header { background: transparent !important; border-top: 1px solid #000; border-bottom: 1px dashed #ccc; }
-            tfoot tr td { background: transparent !important; border-top: 1px solid #000; }
+            .total-row td { background: transparent !important; border-top: 1px solid #000; }
           }
         </style>
       </head>
@@ -203,6 +207,10 @@ export async function printRomaneioReport(ocId) {
             </div>
           ` : `
             <div class="info-item">
+              <span class="info-label">Destino Principal</span>
+              <span class="info-val">${destinoRemessa}</span>
+            </div>
+            <div class="info-item">
               <span class="info-label">Motorista</span>
               <span class="info-val">${oc.motorista || '-'}</span>
             </div>
@@ -217,7 +225,7 @@ export async function printRomaneioReport(ocId) {
           </div>
           <div class="info-item">
             <span class="info-label">Peso Máximo (kg)</span>
-            <span class="info-val">${oc.peso_maximo ? Number(oc.peso_maximo).toFixed(2) : 'Sem Limite'}</span>
+            <span class="info-val">${oc.peso_maximo ? formatPeso(oc.peso_maximo) : 'Sem Limite'}</span>
           </div>
         </div>
 
@@ -262,8 +270,8 @@ export async function printRomaneioReport(ocId) {
               <td colspan="4">
                 <div class="item-name">${item.item_code} &mdash; ${item.item_name || 'Sem Descrição'}</div>
                 <div class="item-meta">
-                  PROGRAMADO: ${expectedVol.toFixed(4)} &nbsp;|&nbsp; 
-                  CARREGADO: ${actualVol.toFixed(4)} &nbsp;|&nbsp; 
+                  PROGRAMADO: ${formatVol(expectedVol)} &nbsp;|&nbsp; 
+                  CARREGADO: ${formatVol(actualVol)} &nbsp;|&nbsp; 
                   TOTAL DE PACOTES: ${pkgsForThisItem.length}
                 </div>
               </td>
@@ -274,8 +282,8 @@ export async function printRomaneioReport(ocId) {
             html += `
               <tr class="pkg-row">
                 <td>${pkg.qrcode}</td>
-                <td class="numeric">${Number(pkg.quantidade).toFixed(4)}</td>
-                <td class="numeric">${Number(pkg.peso).toFixed(2)}</td>
+                <td class="numeric">${formatVol(pkg.quantidade)}</td>
+                <td class="numeric">${formatPeso(pkg.peso)}</td>
                 <td class="center">${new Date(pkg.created_at).toLocaleString('pt-BR')}</td>
               </tr>
             `;
@@ -284,15 +292,13 @@ export async function printRomaneioReport(ocId) {
       }
 
       html += `
-          </tbody>
-          <tfoot>
-            <tr>
+            <tr class="total-row">
               <td style="text-align: right; padding-right: 16px;">TOTAL GERAL (${totalPacotesGeral} PACOTES):</td>
-              <td class="numeric">${totalVolumeGeral.toFixed(4)}</td>
-              <td class="numeric">${totalPesoGeral.toFixed(2)}</td>
+              <td class="numeric">${formatVol(totalVolumeGeral)}</td>
+              <td class="numeric">${formatPeso(totalPesoGeral)}</td>
               <td></td>
             </tr>
-          </tfoot>
+          </tbody>
         </table>
       `;
     }
