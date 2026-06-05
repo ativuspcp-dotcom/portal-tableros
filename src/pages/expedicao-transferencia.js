@@ -354,6 +354,7 @@ async function saveTransferencia(isEdit, editId) {
     }
     
     itens.push({
+      pedido_numero: 'TRANSFERENCIA',
       item_code: itemCode,
       item_name: itemName,
       tipo: tipo,
