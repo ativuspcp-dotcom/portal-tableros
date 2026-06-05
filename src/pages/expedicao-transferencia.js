@@ -406,7 +406,7 @@ async function saveTransferencia(isEdit, editId) {
     window.dispatchEvent(new Event('expedicao_changed'));
   } catch (err) {
     console.error('Error saving transf', err);
-    showToast('Erro ao salvar transferência.', 'error');
+    showToast('Erro ao salvar transferência: ' + (err.message || err.toString()), 'error');
     document.getElementById('btn-save-transf').disabled = false;
     document.getElementById('btn-save-transf').textContent = 'Salvar Transferência';
   }
