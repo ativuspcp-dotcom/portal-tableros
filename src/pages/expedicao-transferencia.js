@@ -2,7 +2,7 @@ import { getBPLID } from '../auth/auth.js';
 import { supabase } from '../config/supabase.js';
 import { showToast } from '../components/toast.js';
 import { confirmDialog } from '../components/modal.js';
-import { fetchRemessas, transferenciasCache } from './expedicao.js';
+import { fetchRemessas, transferenciasCache, empresasCache, placasCache, motoristasCache } from './expedicao.js';
 
 let expedicaoItemsCache = [];
 
