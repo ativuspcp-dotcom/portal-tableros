@@ -1149,6 +1149,7 @@ async function saveRemessa(isEdit, editId) {
     
     const tipo = tr.querySelector('.rm-tipo-select').value;
     const qtdProg = tr.querySelector('.rm-qtd-prog').value;
+    const dbId = tr.querySelector('.rm-item-db-id')?.value;
     
     if (!pedido || !itemCode) {
       showToast('Preencha os campos obrigatórios (Pedido e Item) em todas as linhas.', 'error');

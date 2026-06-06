@@ -1,0 +1,133 @@
+<mdfeProc xmlns="http://www.portalfiscal.inf.br/mdfe" versao="3.00">
+<MDFe>
+<infMDFe versao="3.00" Id="MDFe41260609402999000170580010000003931027207386">
+<ide>
+<cUF>41</cUF>
+<tpAmb>1</tpAmb>
+<tpEmit>2</tpEmit>
+<mod>58</mod>
+<serie>1</serie>
+<nMDF>393</nMDF>
+<cMDF>02720738</cMDF>
+<cDV>6</cDV>
+<modal>1</modal>
+<dhEmi>2026-06-06T12:04:42-03:00</dhEmi>
+<tpEmis>1</tpEmis>
+<procEmi>0</procEmi>
+<verProc>BrasilNFe 2.0.0</verProc>
+<UFIni>PR</UFIni>
+<UFFim>PR</UFFim>
+<infMunCarrega>
+<cMunCarrega>4118204</cMunCarrega>
+<xMunCarrega>Origem</xMunCarrega>
+</infMunCarrega>
+</ide>
+<emit>
+<CNPJ>09402999000170</CNPJ>
+<IE>9043291502</IE>
+<xNome>TABLEROS IND. E COM. DE PAINEIS LTDA</xNome>
+<xFant>TABLEROS DO BRASIL</xFant>
+<enderEmit>
+<xLgr>Rua Marechal Deodoro</xLgr>
+<nro>2081</nro>
+<xBairro>Centro</xBairro>
+<cMun>4117602</cMun>
+<xMun>Palmas</xMun>
+<CEP>85555000</CEP>
+<UF>PR</UF>
+<fone>4699164699</fone>
+<email>tecnologia@tableros.com.br</email>
+</enderEmit>
+</emit>
+<infModal versaoModal="3.00">
+<rodo>
+<infANTT/>
+<veicTracao>
+<placa>SDS1H72</placa>
+<RENAVAM>01315721900</RENAVAM>
+<tara>23000</tara>
+<capKG>0</capKG>
+<capM3>0</capM3>
+<condutor>
+<xNome>Antonio Selmo Guedes</xNome>
+<CPF>02135119911</CPF>
+</condutor>
+<tpRod>03</tpRod>
+<tpCar>00</tpCar>
+<UF>PR</UF>
+</veicTracao>
+<veicReboque>
+<placa>BEQ5G41</placa>
+<RENAVAM>01246763416</RENAVAM>
+<tara>17000</tara>
+<capKG>0</capKG>
+<capM3>0</capM3>
+<tpCar>01</tpCar>
+<UF>PR</UF>
+</veicReboque>
+<veicReboque>
+<placa>BEQ5D03</placa>
+<RENAVAM>01246762673</RENAVAM>
+<tara>17000</tara>
+<capKG>0</capKG>
+<capM3>0</capM3>
+<tpCar>01</tpCar>
+<UF>PR</UF>
+</veicReboque>
+</rodo>
+</infModal>
+<infDoc>
+<infMunDescarga>
+<cMunDescarga>4118204</cMunDescarga>
+<xMunDescarga>Destino</xMunDescarga>
+<infNFe>
+<chNFe>41260609402999000170550010000362041941406518</chNFe>
+</infNFe>
+<infNFe>
+<chNFe>41260609402999000170550010000362051404889118</chNFe>
+</infNFe>
+</infMunDescarga>
+</infDoc>
+<prodPred>
+<tpCarga>05</tpCarga>
+<xProd>Madeira</xProd>
+<cEAN>SEM GTIN</cEAN>
+<NCM>44123900</NCM>
+</prodPred>
+<tot>
+<qCTe>0</qCTe>
+<qNFe>2</qNFe>
+<qMDFe>0</qMDFe>
+<vCarga>133472.94</vCarga>
+<cUnid>01</cUnid>
+<qCarga>3756000.0000</qCarga>
+</tot>
+<infAdic>
+<infCpl>Site do contribuinte: www.tableros.com.br</infCpl>
+</infAdic>
+</infMDFe>
+<infMDFeSupl>
+<qrCodMDFe>https://dfe-portal.svrs.rs.gov.br/mdfe/qrCode?chMDFe=41260609402999000170580010000003931027207386&tpAmb=1</qrCodMDFe>
+</infMDFeSupl>
+<Signature xmlns="http://www.w3.org/2000/09/xmldsig#">
+<SignedInfo>
+<CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/>
+<SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"/>
+<Reference URI="#MDFe41260609402999000170580010000003931027207386">
+<Transforms>
+<Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/>
+<Transform Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/>
+</Transforms>
+<DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/>
+<DigestValue>ZjG0RG21CRSeG/gXwwfeVVpAYpU=</DigestValue>
+</Reference>
+</SignedInfo>
+<SignatureValue>AMFrBTt5UwsO64IrNkvbrAdeyESRIFBZzZyNqTncDnMky9wHslFKBZO0/F5jNpQLwu/QHS9PQ+8j/br+cXW0vRCtnRmvFaeyyACK7wiSKPPUSqqunOJK1RzwaOCe7o4nDYyaEMoLxy54fIKJj6LuehKFHBPg5UScBfm9bwEu7t68vucQAK7ssDtZyTQqXusz6VrDYfxVxNr2ExMQ2tRor0K1kxNg0BlMPAt7TbTCyoAboLgd/iy6Lg9XtO0/ibnsDTu8zFFyp3tyrIEEApnfihvVw1C8bSMKNq/CNvsYEVy1pJKqFPy7tCpEuUywL3bU6EPO0CpI2m+FIVXbXzoG1g==</SignatureValue>
+<KeyInfo>
+<X509Data>
+<X509Certificate>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</X509Certificate>
+</X509Data>
+</KeyInfo>
+</Signature>
+</MDFe>
+</mdfeProc>
