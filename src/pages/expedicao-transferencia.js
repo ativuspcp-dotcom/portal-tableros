@@ -366,6 +366,7 @@ function addTransferenciaItemRow(existingItem = null) {
   tr.innerHTML = `
     <td style="text-align: center; color: var(--color-text-secondary);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg></td>
     <td style="position: relative;">
+      <input type="hidden" class="tf-item-db-id" value="${existingItem ? existingItem.id : ''}" />
       <input type="text" class="form-input tf-item-input" placeholder="Digite para buscar..." autocomplete="off" required style="width: 100%;">
     </td>
     <td>
@@ -515,6 +516,7 @@ async function saveTransferencia(isEdit, editId) {
     const itemName = parts.slice(1).join(' - ');
     const tipo = tr.querySelector('.tf-tipo-select').value;
     const qtdProg = tr.querySelector('.tf-qtd-prog').value;
+    const dbId = tr.querySelector('.tf-item-db-id').value;
     
     if (!itemCode) {
       showToast('Selecione um item válido em todas as linhas.', 'error');
@@ -527,6 +529,7 @@ async function saveTransferencia(isEdit, editId) {
     }
     
     itens.push({
+      id: dbId ? dbId : undefined,
       pedido_numero: 'TRANSFERENCIA',
       item_code: itemCode,
       item_name: itemName,
@@ -561,13 +564,24 @@ async function saveTransferencia(isEdit, editId) {
       const { error: headerError } = await supabase.from('expedicao_ordens_carregamento').update(headerData).eq('id', editId);
       if (headerError) throw headerError;
       
-      const { error: delError } = await supabase.from('expedicao_ordens_carregamento_itens').delete().eq('ordem_id', editId);
-      if (delError) throw delError;
-      
       if (itens.length > 0) {
         const itensPayload = itens.map(i => ({ ...i, ordem_id: editId }));
-        const { error: insError } = await supabase.from('expedicao_ordens_carregamento_itens').insert(itensPayload);
+        const currentIds = itensPayload.map(i => i.id).filter(id => id);
+        
+        let delQuery = supabase.from('expedicao_ordens_carregamento_itens').delete().eq('ordem_id', editId);
+        if (currentIds.length > 0) {
+          delQuery = delQuery.not('id', 'in', `(${currentIds.join(',')})`);
+        }
+        
+        const { error: delError } = await delQuery;
+        if (delError) throw delError;
+        
+        const { error: insError } = await supabase.from('expedicao_ordens_carregamento_itens').upsert(itensPayload);
         if (insError) throw insError;
+      } else {
+        // If all items removed
+        const { error: delError } = await supabase.from('expedicao_ordens_carregamento_itens').delete().eq('ordem_id', editId);
+        if (delError) throw delError;
       }
     } else {
       const { data: ocData, error: ocError } = await supabase.from('expedicao_ordens_carregamento').insert(headerData).select('id').single();

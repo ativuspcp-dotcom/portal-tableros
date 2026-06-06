@@ -64,7 +64,11 @@ let loadUserDataPromise = null;
 /**
  * Load user profile and module permissions (deduplicated)
  */
-async function loadUserData(userId) {
+async function loadUserData(userId, force = false) {
+  if (!force && currentSession.profile && currentSession.profile.id === userId) {
+    return;
+  }
+
   if (loadUserDataPromise) {
     return loadUserDataPromise;
   }

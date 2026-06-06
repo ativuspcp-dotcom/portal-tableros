@@ -896,6 +896,8 @@ async function initRemessaForm(isEdit, remessa) {
     if (remessa.expedicao_ordens_carregamento_itens && remessa.expedicao_ordens_carregamento_itens.length > 0) {
       remessa.expedicao_ordens_carregamento_itens.forEach(item => {
         const tr = addRemessaItemRow();
+        tr.querySelector('.rm-item-db-id').value = item.id;
+        
         const selectPedido = tr.querySelector('.rm-pedido-select');
         selectPedido.value = item.pedido_numero;
         selectPedido.dispatchEvent(new Event('change'));
@@ -947,6 +949,7 @@ function addRemessaItemRow() {
   tr.innerHTML = `
     <td style="vertical-align: top;">
       <div style="display: flex; flex-direction: column; gap: var(--space-2);">
+        <input type="hidden" class="rm-item-db-id" />
         <select class="form-select rm-pedido-select" style="width: 100%;" required>
           ${pedidoOptions}
         </select>
@@ -1158,6 +1161,7 @@ async function saveRemessa(isEdit, editId) {
     }
     
     itens.push({
+      id: dbId ? dbId : undefined,
       pedido_numero: pedido,
       armazem: armazem,
       cod_pn: codPn,
@@ -1204,19 +1208,21 @@ async function saveRemessa(isEdit, editId) {
         
       if (headerError) throw headerError;
       
-      // Delete old items
-      const { error: delError } = await supabase
-        .from('expedicao_ordens_carregamento_itens')
-        .delete()
-        .eq('ordem_id', editId);
-        
+      // Insert or Update items, delete removed ones
+      const itemsData = itens.map(i => ({ ...i, ordem_id: editId }));
+      const currentIds = itemsData.map(i => i.id).filter(id => id);
+      
+      let delQuery = supabase.from('expedicao_ordens_carregamento_itens').delete().eq('ordem_id', editId);
+      if (currentIds.length > 0) {
+        delQuery = delQuery.not('id', 'in', `(${currentIds.join(',')})`);
+      }
+      
+      const { error: delError } = await delQuery;
       if (delError) throw delError;
       
-      // Insert new items
-      const itemsData = itens.map(i => ({ ...i, ordem_id: editId }));
       const { error: itemsError } = await supabase
         .from('expedicao_ordens_carregamento_itens')
-        .insert(itemsData);
+        .upsert(itemsData);
         
       if (itemsError) throw itemsError;
       
