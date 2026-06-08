@@ -327,7 +327,7 @@ function renderActiveTabView() {
 
     <!-- Items Table -->
     <div class="card" style="padding: 0; overflow: hidden; border-color: var(--color-border); background: var(--color-surface);">
-      <div class="table-wrapper">
+      <div class="table-wrapper" style="max-height: 60vh; overflow-y: auto;">
         <table class="table">
           <thead>
             <tr>
@@ -442,7 +442,7 @@ let sapFilteredItems = [];
 
 async function fetchCompensadosAcabadosSAP() {
   try {
-    const url = "/api/Items?$select=ItemCode,ItemName,ForeignName,ItemsGroupCode,SalesFactor1,SalesFactor2,SalesFactor3,SalesFactor4,U_Quality&$filter=ItemsGroupCode eq 106 and Properties1 eq 'tYES'";
+    const url = "/api/Items?$select=ItemCode,ItemName,ForeignName,ItemsGroupCode,SalesFactor1,SalesFactor2,SalesFactor3,SalesFactor4,U_Quality&$filter=ItemsGroupCode eq 106 and Properties1 eq 'tYES'&$top=5000";
     const res = await fetch(url, {
       method: 'GET',
       headers: { 

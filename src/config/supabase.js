@@ -26,7 +26,7 @@ try {
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
-    autoRefreshToken: false, // Disable autoRefreshToken to prevent promise locks on database queries
+    autoRefreshToken: true,
     persistSession: true
   }
 });
