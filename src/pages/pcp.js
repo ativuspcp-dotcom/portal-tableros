@@ -442,25 +442,24 @@ let sapFilteredItems = [];
 
 async function fetchCompensadosAcabadosSAP() {
   try {
-    const url = "/api/Items?$select=ItemCode,ItemName,ForeignName,ItemsGroupCode,SalesFactor1,SalesFactor2,SalesFactor3,SalesFactor4,U_Quality&$filter=ItemsGroupCode eq 106 and Properties1 eq 'tYES'&$top=5000";
+    const url = "/api/Items?$select=ItemCode,ItemName,ForeignName,ItemsGroupCode,SalesFactor1,SalesFactor2,SalesFactor3,SalesFactor4,U_Quality&$filter=ItemsGroupCode eq 106 and Properties1 eq 'tYES'";
     const res = await fetch(url, {
       method: 'GET',
       headers: { 
         'Content-Type': 'application/json',
-        'ngrok-skip-browser-warning': 'true'
+        'ngrok-skip-browser-warning': 'true',
+        'Prefer': 'odata.maxpagesize=0'
       }
     });
     
-    if (res.ok) {
-      const data = await res.json();
-      sapItems = data.value || [];
-      sapFilteredItems = sapItems;
-      renderSAPTableData();
-    } else {
-      console.error('Error fetching SAP items:', res.status, res.statusText);
-      showToast('Erro ao buscar dados do SAP B1.', 'error');
-      document.getElementById('fc-table-body').innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 20px; color: red;">Erro ao buscar dados do SAP B1.</td></tr>`;
+    if (!res.ok) {
+      throw new Error('Error fetching SAP items: ' + res.statusText);
     }
+    
+    const data = await res.json();
+    sapItems = data.value || [];
+    sapFilteredItems = sapItems;
+    renderSAPTableData();
   } catch (error) {
     console.error('Network error fetching SAP items:', error);
     showToast('Falha na conexão com o SAP B1.', 'error');
