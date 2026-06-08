@@ -152,7 +152,11 @@ async function loadCadastroData() {
       const url = "/api/BusinessPartners?$select=CardCode,CardName,BPFiscalTaxIDCollection&$filter=Properties1 eq 'tYES'";
       const res = await fetch(url, {
         method: 'GET',
-        headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' }
+        headers: { 
+          'Content-Type': 'application/json', 
+          'ngrok-skip-browser-warning': 'true',
+          'Prefer': 'odata.maxpagesize=0'
+        }
       });
       if (res.ok) {
         const data = await res.json();
