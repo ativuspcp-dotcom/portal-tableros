@@ -458,6 +458,14 @@ async function fetchCompensadosAcabadosSAP() {
     
     const data = await res.json();
     sapItems = data.value || [];
+    
+    // Sort items alphabetically by ItemName
+    sapItems.sort((a, b) => {
+      const nameA = a.ItemName || '';
+      const nameB = b.ItemName || '';
+      return nameA.localeCompare(nameB, 'pt-BR');
+    });
+
     sapFilteredItems = sapItems;
     renderSAPTableData();
   } catch (error) {
