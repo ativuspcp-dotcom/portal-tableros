@@ -1161,8 +1161,7 @@ async function saveRemessa(isEdit, editId) {
       return;
     }
     
-    itens.push({
-      id: dbId ? dbId : undefined,
+    const newItem = {
       pedido_numero: pedido,
       armazem: armazem,
       cod_pn: codPn,
@@ -1174,7 +1173,9 @@ async function saveRemessa(isEdit, editId) {
       unit_price: unitPrice,
       u_uf: uf,
       u_cod_mun: codMun
-    });
+    };
+    if (dbId) newItem.id = dbId;
+    itens.push(newItem);
   }
   
   try {

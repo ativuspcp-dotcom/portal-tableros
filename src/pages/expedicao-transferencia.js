@@ -528,14 +528,15 @@ async function saveTransferencia(isEdit, editId) {
       return;
     }
     
-    itens.push({
-      id: dbId ? dbId : undefined,
+    const newItem = {
       pedido_numero: 'TRANSFERENCIA',
       item_code: itemCode,
       item_name: itemName,
       tipo: tipo,
       quantidade_programada: tipo === 'Obrigatório' ? (parseFloat(qtdProg.replace(',', '.')) || 0) : null
-    });
+    };
+    if (dbId) newItem.id = dbId;
+    itens.push(newItem);
   }
   
   try {
