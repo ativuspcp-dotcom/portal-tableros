@@ -124,6 +124,7 @@ export function renderEstoqueDashboard() {
   `}).join('');
 
   container.innerHTML = `
+    <div style="max-width: 1400px; margin: 0 auto; width: 100%;">
     <!-- Toolbar -->
     <div class="toolbar" style="margin-bottom: var(--space-4); display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; justify-content: space-between;">
       <div class="toolbar-left" style="display: flex; flex-wrap: wrap; gap: var(--space-2); flex: 1;">
@@ -189,6 +190,7 @@ export function renderEstoqueDashboard() {
           </tbody>
         </table>
       </div>
+    </div>
     </div>
   `;
 
