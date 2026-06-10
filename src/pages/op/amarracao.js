@@ -148,6 +148,7 @@ export function renderAmarracaoView() {
   `;
 
   return `
+    <div style="max-width: 1500px; margin: 0 auto; width: 100%;">
     ${kpisHtml}
     <!-- Search/Filters toolbar -->
     <div class="toolbar" style="margin-bottom: var(--space-4); display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; justify-content: space-between;">
@@ -189,6 +190,7 @@ export function renderAmarracaoView() {
           </tbody>
         </table>
       </div>
+    </div>
     </div>
   `;
 }
