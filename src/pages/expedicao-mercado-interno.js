@@ -33,7 +33,9 @@ export async function fetchOrders() {
       
       const filtered = rawList.filter(row => {
          const rowBpl = row.BPLId !== undefined ? row.BPLId : row["'BPLId'"];
-         return rowBpl == bplid;
+         const cardCode = row.CardCode || row["'CardCode'"];
+         // Filtra filial logada e remove C0005, C0028 e C0011 caso ainda venham do SAP
+         return rowBpl == bplid && cardCode !== 'C0005' && cardCode !== 'C0028' && cardCode !== 'C0011';
       });
 
       const grouped = {};
