@@ -2,7 +2,7 @@ import { getBPLID } from '../auth/auth.js';
 import { supabase } from '../config/supabase.js';
 import { showToast } from '../components/toast.js';
 import { confirmDialog } from '../components/modal.js';
-import { fetchRemessas, fetchLogisticaData, mercadoInternoCache, getMercadoInternoStatusFilter, setMercadoInternoStatusFilter, renderExpedicao } from './expedicao.js';
+import { fetchRemessas, fetchLogisticaData, mercadoInternoCache, getMercadoInternoStatusFilter, setMercadoInternoStatusFilter, renderExpedicao, empresasCache, motoristasCache, placasCache } from './expedicao.js';
 import { printRomaneioReport } from '../components/romaneio-report.js';
 
 let expedicaoItemsCache = [];
@@ -245,15 +245,21 @@ function showMercadoInternoModal(editId = null) {
               </div>
               <div class="form-group">
                 <label class="form-label">Transportadora (Opcional)</label>
-                <input type="text" id="mi-transportadora" class="form-input" placeholder="Digite a transportadora..." value="${mi ? (mi.transportadora || '') : ''}">
+                <select class="form-select" id="mi-transportadora">
+                  <option value="">Selecione...</option>
+                </select>
               </div>
               <div class="form-group">
                 <label class="form-label">Placa do Veículo (Opcional)</label>
-                <input type="text" id="mi-placa" class="form-input" placeholder="ABC-1234..." value="${mi ? (mi.placa || '') : ''}">
+                <select class="form-select" id="mi-placa">
+                  <option value="">Selecione...</option>
+                </select>
               </div>
               <div class="form-group">
                 <label class="form-label">Motorista (Opcional)</label>
-                <input type="text" id="mi-motorista" class="form-input" placeholder="Nome do motorista..." value="${mi ? (mi.motorista || '') : ''}">
+                <select class="form-select" id="mi-motorista">
+                  <option value="">Selecione...</option>
+                </select>
               </div>
               <div class="form-group">
                 <label class="form-label">Local de Partida <span style="color: var(--color-danger);">*</span></label>
@@ -323,8 +329,46 @@ async function initMercadoInternoForm(isEdit, mi) {
   
   await Promise.all([
     fetchExpedicaoItems(),
-    fetchOrders()
+    fetchOrders(),
+    fetchLogisticaData()
   ]);
+
+  const selectTransp = document.getElementById('mi-transportadora');
+  if (selectTransp.options.length <= 1) {
+    selectTransp.innerHTML = '<option value="">Selecione...</option>' + 
+      empresasCache.map(e => `<option value="${e.nome_fantasia}" data-cnpj="${e.cnpj}" data-cod="${e.card_code}">${e.nome_fantasia} (${e.cnpj})</option>`).join('');
+  }
+  
+  const selectPlaca = document.getElementById('mi-placa');
+  if (selectPlaca.options.length <= 1) {
+    selectPlaca.innerHTML = '<option value="">Selecione...</option>' + 
+      placasCache.map(p => `<option value="${p.placa}">${p.placa}</option>`).join('');
+  }
+
+  const selectMotorista = document.getElementById('mi-motorista');
+  if (selectMotorista.options.length <= 1) {
+    selectMotorista.innerHTML = '<option value="">Selecione...</option>' + 
+      motoristasCache.map(m => `<option value="${m.nome}">${m.nome}</option>`).join('');
+  }
+
+  selectTransp.addEventListener('change', (e) => {
+    const selectedOption = e.target.selectedOptions[0];
+    const cnpj = selectedOption ? selectedOption.dataset.cnpj : null;
+    
+    let filteredPlacas = placasCache;
+    if (cnpj) {
+      filteredPlacas = placasCache.filter(p => p.empresa_cnpj === cnpj);
+    }
+    selectPlaca.innerHTML = '<option value="">Selecione...</option>' + 
+      filteredPlacas.map(p => `<option value="${p.placa}">${p.placa}</option>`).join('');
+      
+    let filteredMotoristas = motoristasCache;
+    if (cnpj) {
+      filteredMotoristas = motoristasCache.filter(m => m.empresa_cnpj === cnpj);
+    }
+    selectMotorista.innerHTML = '<option value="">Selecione...</option>' + 
+      filteredMotoristas.map(m => `<option value="${m.nome}">${m.nome}</option>`).join('');
+  });
 
   const selectPedido = document.getElementById('mi-pedido');
   selectPedido.innerHTML = '<option value="">Selecione um pedido para carregar...</option>' + 
@@ -393,6 +437,15 @@ async function initMercadoInternoForm(isEdit, mi) {
     } else {
       addMercadoInternoItemRow();
     }
+    
+    if (mi.transportadora) {
+       document.getElementById('mi-transportadora').value = mi.transportadora;
+       // Dispara o change para filtrar as placas/motoristas
+       const event = new Event('change');
+       document.getElementById('mi-transportadora').dispatchEvent(event);
+    }
+    if (mi.placa) document.getElementById('mi-placa').value = mi.placa;
+    if (mi.motorista) document.getElementById('mi-motorista').value = mi.motorista;
   } else {
     // New
     const date = new Date();
