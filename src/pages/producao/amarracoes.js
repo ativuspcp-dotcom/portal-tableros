@@ -3,12 +3,15 @@ import { showToast } from '../../components/toast.js';
 import { confirmDialog } from '../../components/modal.js';
 
 let amarracoesCache = [];
-let amarracoesCacheByDate = {};
-let currentDateFilter = new Date().toISOString().split('T')[0];
+let amarracoesDateCache = {};
+let currentStartDate = new Date().toISOString().split('T')[0];
+let currentEndDate = new Date().toISOString().split('T')[0];
+let searchQuery = '';
 
 export async function fetchAmarracoesProducao(forceRefresh = false) {
-  if (!forceRefresh && amarracoesCacheByDate[currentDateFilter]) {
-    amarracoesCache = amarracoesCacheByDate[currentDateFilter];
+  const cacheKey = `${currentStartDate}_${currentEndDate}`;
+  if (!forceRefresh && amarracoesDateCache[cacheKey]) {
+    amarracoesCache = amarracoesDateCache[cacheKey];
     return;
   }
   try {
@@ -21,11 +24,12 @@ export async function fetchAmarracoesProducao(forceRefresh = false) {
           codigo_op
         )
       `)
-      .eq('data_producao', currentDateFilter)
+      .gte('data_producao', currentStartDate)
+      .lte('data_producao', currentEndDate)
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    amarracoesCacheByDate[currentDateFilter] = data || [];
+    amarracoesDateCache[cacheKey] = data || [];
     amarracoesCache = data || [];
   } catch (error) {
     console.error('Error fetching amarracoes:', error);
@@ -33,14 +37,26 @@ export async function fetchAmarracoesProducao(forceRefresh = false) {
   }
 }
 
-export function setAmarracoesDateFilter(dateStr) {
-  currentDateFilter = dateStr;
+export function setAmarracoesDateFilter(startStr, endStr) {
+  if (startStr) currentStartDate = startStr;
+  if (endStr) currentEndDate = endStr;
 }
 
 export function renderAmarracoesProducaoView() {
-  const tbody = amarracoesCache.length === 0 
-    ? `<tr><td colspan="10" style="text-align: center; padding: var(--space-8); color: var(--color-text-secondary);">Nenhum pacote amarrado encontrado para esta data.</td></tr>`
-    : amarracoesCache.map(pkg => {
+  const lowerQuery = searchQuery.toLowerCase();
+  const filteredCache = amarracoesCache.filter(pkg => {
+     if (!searchQuery) return true;
+     const op = pkg.pcp_op_amarracao?.codigo_op || '';
+     const item = pkg.nome_item || '';
+     const qr = pkg.qrcode || pkg.id || '';
+     return op.toLowerCase().includes(lowerQuery) || 
+            item.toLowerCase().includes(lowerQuery) || 
+            qr.toLowerCase().includes(lowerQuery);
+  });
+
+  const tbody = filteredCache.length === 0 
+    ? `<tr><td colspan="10" style="text-align: center; padding: var(--space-8); color: var(--color-text-secondary);">Nenhum pacote amarrado encontrado para estes filtros.</td></tr>`
+    : filteredCache.map(pkg => {
         const opName = pkg.pcp_op_amarracao?.codigo_op || 'Avulso';
         const isSaida = pkg.saida === true;
         
@@ -83,10 +99,24 @@ export function renderAmarracoesProducaoView() {
       `}).join('');
 
   return `
-    <div class="toolbar" style="margin-bottom: var(--space-4); display: flex; gap: var(--space-2); align-items: center; justify-content: space-between;">
-      <div class="toolbar-left" style="display: flex; gap: var(--space-2); align-items: center;">
-        <label for="amarracoes-date-filter" style="font-weight: 500; font-size: var(--font-size-sm); color: var(--color-text-secondary);">Data de Produção:</label>
-        <input type="date" id="amarracoes-date-filter" class="form-input" style="height: 34px; width: 160px; font-size: var(--font-size-sm);" value="${currentDateFilter}">
+    <div class="toolbar" style="margin-bottom: var(--space-4); display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: flex-end; justify-content: space-between;">
+      <div class="toolbar-left" style="display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: flex-end; flex: 1;">
+        
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          <label style="font-size: var(--font-size-xs); font-weight: 500; color: var(--color-text-secondary);">Data Inicial</label>
+          <input type="date" id="amarracoes-start-date" class="form-input" style="height: 34px; width: 140px; font-size: var(--font-size-sm);" value="${currentStartDate}">
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          <label style="font-size: var(--font-size-xs); font-weight: 500; color: var(--color-text-secondary);">Data Final</label>
+          <input type="date" id="amarracoes-end-date" class="form-input" style="height: 34px; width: 140px; font-size: var(--font-size-sm);" value="${currentEndDate}">
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 4px; flex: 1; max-width: 300px;">
+          <label style="font-size: var(--font-size-xs); font-weight: 500; color: var(--color-text-secondary);">Pesquisar (Item, OP, Etiqueta)</label>
+          <input type="text" id="amarracoes-search" class="form-input" style="height: 34px; font-size: var(--font-size-sm);" placeholder="Buscar..." value="${searchQuery}">
+        </div>
+
       </div>
       <div class="toolbar-right">
         <button class="btn btn-outline btn-sm" id="btn-refresh-amarracoes-prod" style="height: 34px;">
@@ -114,7 +144,7 @@ export function renderAmarracoesProducaoView() {
               <th style="text-align: right; font-size: var(--font-size-xs); padding: 6px 8px;">Ações</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody id="amarracoes-tbody">
             ${tbody}
           </tbody>
         </table>
@@ -124,12 +154,34 @@ export function renderAmarracoesProducaoView() {
 }
 
 export function bindAmarracoesProducaoEvents() {
-  const dateFilter = document.getElementById('amarracoes-date-filter');
-  if (dateFilter) {
-    dateFilter.addEventListener('change', async (e) => {
-      setAmarracoesDateFilter(e.target.value);
-      await fetchAmarracoesProducao();
-      window.dispatchEvent(new Event('amarracoes_producao_changed'));
+  const startDate = document.getElementById('amarracoes-start-date');
+  const endDate = document.getElementById('amarracoes-end-date');
+  const searchInput = document.getElementById('amarracoes-search');
+
+  const triggerDateSearch = async () => {
+    setAmarracoesDateFilter(startDate?.value, endDate?.value);
+    await fetchAmarracoesProducao();
+    window.dispatchEvent(new Event('amarracoes_producao_changed'));
+  };
+
+  if (startDate) startDate.addEventListener('change', triggerDateSearch);
+  if (endDate) endDate.addEventListener('change', triggerDateSearch);
+  
+  if (searchInput) {
+    searchInput.addEventListener('input', (e) => {
+      searchQuery = e.target.value.toLowerCase();
+      const rows = document.querySelectorAll('#amarracoes-tbody tr');
+      rows.forEach(row => {
+        // Ignora a linha de "Nenhum pacote encontrado"
+        if (row.children.length === 1) return;
+        
+        if (!searchQuery) {
+          row.style.display = '';
+        } else {
+          const text = row.innerText.toLowerCase();
+          row.style.display = text.includes(searchQuery) ? '' : 'none';
+        }
+      });
     });
   }
 
