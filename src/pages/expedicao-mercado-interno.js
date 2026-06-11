@@ -24,11 +24,51 @@ export async function fetchExpedicaoItems() {
 export async function fetchOrders() {
   if (ordersCache.length > 0) return ordersCache;
   try {
-    const url = "/api/Orders?$select=DocNum,CardCode,CardName,DocumentLines&$filter=DocumentStatus eq 'bost_Open'";
+    const bplid = getBPLID();
+    const url = "/api/SQLQueries('PedidoCompMI')/List?Prefer=odata.maxpagesize=0";
     const res = await fetch(url, { headers: { 'ngrok-skip-browser-warning': 'true', 'Prefer': 'odata.maxpagesize=0', 'Cache-Control': 'no-cache, no-store, must-revalidate' } });
     if (res.ok) {
       const data = await res.json();
-      ordersCache = data.value || [];
+      const rawList = data.value || [];
+      
+      const filtered = rawList.filter(row => {
+         const rowBpl = row.BPLId !== undefined ? row.BPLId : row["'BPLId'"];
+         return rowBpl == bplid;
+      });
+
+      const grouped = {};
+      for (const row of filtered) {
+         const docNum = row["Número"] || row["'Número'"] || row.DocEntry;
+         const cardCode = row.CardCode || row["'CardCode'"];
+         const cardName = row["Nome do PN"] || row["'Nome do PN'"];
+         
+         if (!grouped[docNum]) {
+            grouped[docNum] = {
+               DocNum: docNum,
+               CardCode: cardCode,
+               CardName: cardName,
+               DocumentLines: []
+            };
+         }
+         
+         const itemDesc = row.ITEM || row["'ITEM'"];
+         const frgnName = row.FrgnName || row["'FrgnName'"];
+         const itemCode = frgnName || itemDesc; // Fallback se ItemCode não estiver na query
+         
+         const openQty = row["Quantidade Pendente"] || row["'Quantidade Pendente'"] || 0;
+         const measureUnit = row.unitMsr || row["'unitMsr'"];
+         
+         grouped[docNum].DocumentLines.push({
+            ItemCode: itemCode,
+            ItemDescription: itemDesc,
+            RemainingOpenQuantity: openQty,
+            MeasureUnit: measureUnit,
+            SalesFactor1: row.SalFactor1 || row["'SalFactor1'"] || 0,
+            SalesFactor2: row.SalFactor2 || row["'SalFactor2'"] || 0,
+            SalesFactor3: row.SalFactor3 || row["'SalFactor3'"] || 0
+         });
+      }
+      ordersCache = Object.values(grouped);
     }
   } catch(e) { console.error('Error fetching Orders', e); }
   return ordersCache;
@@ -307,13 +347,10 @@ async function initMercadoInternoForm(isEdit, mi) {
       
       let volumeM3 = 0;
       if (line.MeasureUnit && line.MeasureUnit.toUpperCase() === 'CH') {
-        const sapItem = expedicaoItemsCache.find(i => i.ItemCode === line.ItemCode);
-        if (sapItem) {
-          const comp = parseFloat(sapItem.SalesFactor1) || 0;
-          const larg = parseFloat(sapItem.SalesFactor2) || 0;
-          const bitola = parseFloat(sapItem.SalesFactor3) || 0;
-          volumeM3 = comp * larg * bitola * line.RemainingOpenQuantity;
-        }
+        const comp = parseFloat(line.SalesFactor1) || 0;
+        const larg = parseFloat(line.SalesFactor2) || 0;
+        const bitola = parseFloat(line.SalesFactor3) || 0;
+        volumeM3 = comp * larg * bitola * line.RemainingOpenQuantity;
       } else {
         volumeM3 = line.RemainingOpenQuantity; // Assume M3
       }
