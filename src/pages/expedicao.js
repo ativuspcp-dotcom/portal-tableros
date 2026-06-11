@@ -6,6 +6,7 @@ import { getBPLID } from '../auth/auth.js';
 import { showToast } from '../components/toast.js';
 import { confirmDialog } from '../components/modal.js';
 import { renderTransferenciaInternaTab, bindTransferenciaEvents } from './expedicao-transferencia.js';
+import { renderMercadoInternoTab, bindMercadoInternoEvents } from './expedicao-mercado-interno.js';
 import { printRomaneioReport } from '../components/romaneio-report.js';
 
 // State
@@ -14,11 +15,16 @@ let activeSubTab = sessionStorage.getItem('expedicaoActiveSubTab') || 'remessa_a
 
 let remessasCache = [];
 export let transferenciasCache = [];
+export let mercadoInternoCache = [];
 let remessasStatusFilter = 'Todas';
 let transferenciasStatusFilter = 'Todas';
+let mercadoInternoStatusFilter = 'Todas';
 
 export function getTransferenciasStatusFilter() { return transferenciasStatusFilter; }
 export function setTransferenciasStatusFilter(val) { transferenciasStatusFilter = val; }
+
+export function getMercadoInternoStatusFilter() { return mercadoInternoStatusFilter; }
+export function setMercadoInternoStatusFilter(val) { mercadoInternoStatusFilter = val; }
 
 // Data caches for the form
 let pedidosCache = [];
@@ -201,6 +207,10 @@ export async function renderExpedicao(container = document.getElementById('view-
                 style="font-size: var(--font-size-sm); font-weight: ${activeSubTab === 'transferencia_interna' ? '600' : '400'}; color: ${activeSubTab === 'transferencia_interna' ? 'var(--color-primary)' : 'var(--color-text-secondary)'}; border: none; background: transparent; border-bottom: 2px solid ${activeSubTab === 'transferencia_interna' ? 'var(--color-primary)' : 'transparent'}; padding-bottom: 4px; transition: all var(--transition-fast);">
                 Transf. Interna
               </button>
+              <button class="expedicao-sub-tab-btn ${activeSubTab === 'mercado_interno' ? 'active' : ''}" data-subtab="mercado_interno" 
+                style="font-size: var(--font-size-sm); font-weight: ${activeSubTab === 'mercado_interno' ? '600' : '400'}; color: ${activeSubTab === 'mercado_interno' ? 'var(--color-primary)' : 'var(--color-text-secondary)'}; border: none; background: transparent; border-bottom: 2px solid ${activeSubTab === 'mercado_interno' ? 'var(--color-primary)' : 'transparent'}; padding-bottom: 4px; transition: all var(--transition-fast);">
+                Mercado Interno
+              </button>
             </div>
           ` : ''}
 
@@ -208,6 +218,7 @@ export async function renderExpedicao(container = document.getElementById('view-
           <div id="expedicao-tab-content">
             ${activeMainTab === 'ordem_carregamento' && activeSubTab === 'remessa_armazem' ? renderRemessaArmazemTab(canCreate, canEdit, canDelete) : ''}
             ${activeMainTab === 'ordem_carregamento' && activeSubTab === 'transferencia_interna' ? renderTransferenciaInternaTab(canCreate, canEdit, canDelete) : ''}
+            ${activeMainTab === 'ordem_carregamento' && activeSubTab === 'mercado_interno' ? renderMercadoInternoTab(canCreate, canEdit, canDelete) : ''}
           </div>
         </div>
       </div>
@@ -274,6 +285,7 @@ function bindExpedicaoEvents() {
   
   // Bind new events from Transferencia Interna tab
   bindTransferenciaEvents();
+  bindMercadoInternoEvents();
 
   const filterRemessa = document.getElementById('remessa-status-filter');
   if (filterRemessa) {
@@ -456,6 +468,15 @@ export async function fetchRemessas() {
       transfData = transfData.filter(r => r.status === transferenciasStatusFilter);
     }
     transferenciasCache = transfData.map(r => ({
+      ...r,
+      itens_count: r.expedicao_ordens_carregamento_itens ? r.expedicao_ordens_carregamento_itens.length : 0
+    }));
+
+    let miData = data.filter(r => r.tipo === 'mercado_interno');
+    if (mercadoInternoStatusFilter !== 'Todas') {
+      miData = miData.filter(r => r.status === mercadoInternoStatusFilter);
+    }
+    mercadoInternoCache = miData.map(r => ({
       ...r,
       itens_count: r.expedicao_ordens_carregamento_itens ? r.expedicao_ordens_carregamento_itens.length : 0
     }));
