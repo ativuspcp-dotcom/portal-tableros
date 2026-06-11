@@ -249,9 +249,10 @@ function showMercadoInternoModal(editId = null) {
         <div class="modal-body" style="flex: 1; overflow-y: auto; padding: var(--space-4);">
           <form id="mi-form" style="position: relative;">
             
-            <div id="mi-loading-overlay" style="display: none; position: absolute; inset: 0; background: rgba(255,255,255,0.8); z-index: 10; flex-direction: column; align-items: center; justify-content: center; border-radius: var(--radius-md);">
-              <div class="spinner" style="width: 40px; height: 40px; border-width: 3px; border-color: var(--color-primary); border-right-color: transparent;"></div>
-              <span style="margin-top: var(--space-3); font-weight: 500; color: var(--color-text-secondary);">Sincronizando dados...</span>
+            <div id="mi-loading-overlay" style="display: none; position: absolute; top: -20px; left: -20px; right: -20px; bottom: -20px; background: rgba(255,255,255,0.85); z-index: 100; flex-direction: column; justify-content: flex-start; align-items: center; padding-top: 150px; border-radius: var(--radius-lg); backdrop-filter: blur(2px);">
+              <div class="spinner" style="width: 40px; height: 40px; border-width: 4px; border-color: var(--color-primary); border-right-color: transparent; margin-bottom: var(--space-4);"></div>
+              <span style="color: var(--color-text); font-weight: 600; font-size: 1.1rem;">Sincronizando com o SAP...</span>
+              <span style="color: var(--color-text-secondary); font-size: 0.9rem; margin-top: 4px;">Isso pode levar alguns segundos.</span>
             </div>
             
             <!-- Dados Gerais (Cabeçalho) -->
