@@ -53,19 +53,28 @@ export async function fetchOrders() {
          
          const itemDesc = row.ITEM || row["'ITEM'"];
          const frgnName = row.FrgnName || row["'FrgnName'"];
-         const itemCode = frgnName || itemDesc; // Fallback se ItemCode não estiver na query
+         const itemCode = frgnName || itemDesc;
          
          const openQty = row["Quantidade Pendente"] || row["'Quantidade Pendente'"] || 0;
          const measureUnit = row.unitMsr || row["'unitMsr'"];
          
+         // Calculate Volume directly
+         let volumeM3 = 0;
+         if (measureUnit && measureUnit.toUpperCase() === 'CH') {
+           const comp = parseFloat(row.SalFactor1 || row["'SalFactor1'"]) || 0;
+           const larg = parseFloat(row.SalFactor2 || row["'SalFactor2'"]) || 0;
+           const bitola = parseFloat(row.SalFactor3 || row["'SalFactor3'"]) || 0;
+           volumeM3 = comp * larg * bitola * openQty;
+         } else {
+           volumeM3 = openQty;
+         }
+
          grouped[docNum].DocumentLines.push({
             ItemCode: itemCode,
             ItemDescription: itemDesc,
             RemainingOpenQuantity: openQty,
-            MeasureUnit: measureUnit,
-            SalesFactor1: row.SalFactor1 || row["'SalFactor1'"] || 0,
-            SalesFactor2: row.SalFactor2 || row["'SalFactor2'"] || 0,
-            SalesFactor3: row.SalFactor3 || row["'SalFactor3'"] || 0
+            VolumeM3: volumeM3,
+            MeasureUnit: measureUnit
          });
       }
       ordersCache = Object.values(grouped);
@@ -82,7 +91,7 @@ export function renderMercadoInternoTab(canCreate, canEdit, canDelete) {
       <tr class="table-row-hover">
         <td style="font-weight: 500;">${t.codigo_oc || '-'}</td>
         <td>${new Date(t.previsao_carga).toLocaleString('pt-BR')}</td>
-        <td>${t.local_partida || '-'} &rarr; ${t.cliente || '-'}</td>
+        <td>${t.local_partida || '-'} &rarr; Mercado Interno</td>
         <td>${t.transportadora || '-'}</td>
         <td>${t.placa || '-'}</td>
         <td>${t.itens_count || 0}</td>
@@ -219,10 +228,10 @@ function showMercadoInternoModal(editId = null) {
 
   modalContainer.innerHTML = `
     <div class="modal-backdrop fade-in" style="position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center;">
-      <div class="modal-content slide-up" style="background: var(--color-surface); border-radius: var(--radius-lg); width: 100%; max-width: 1000px; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
+      <div class="modal-content slide-up" style="background: var(--color-surface); border-radius: var(--radius-lg); width: 100%; max-width: 1200px; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
         
-        <div class="modal-header">
-          <h2 class="modal-title">${isEdit ? 'Editar OC Mercado Interno #' + mi.id : 'Nova OC Mercado Interno'}</h2>
+        <div class="modal-header" style="padding: var(--space-4); border-bottom: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center;">
+          <h2 class="modal-title" style="font-size: var(--font-size-xl); font-weight: 600;">${isEdit ? 'Editar OC Mercado Interno #' + mi.id : 'Nova OC Mercado Interno'}</h2>
           <button type="button" class="btn btn-icon" onclick="document.getElementById('mi-modal-container').innerHTML = ''">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
           </button>
@@ -233,79 +242,77 @@ function showMercadoInternoModal(editId = null) {
             
             <div id="mi-loading-overlay" style="display: none; position: absolute; inset: 0; background: rgba(255,255,255,0.8); z-index: 10; flex-direction: column; align-items: center; justify-content: center; border-radius: var(--radius-md);">
               <div class="spinner" style="width: 40px; height: 40px; border-width: 3px; border-color: var(--color-primary); border-right-color: transparent;"></div>
-              <span style="margin-top: var(--space-3); font-weight: 500; color: var(--color-text-secondary);">Carregando dados...</span>
+              <span style="margin-top: var(--space-3); font-weight: 500; color: var(--color-text-secondary);">Sincronizando dados...</span>
             </div>
             
-            <h3 style="font-size: var(--font-size-base); color: var(--color-text); margin-bottom: var(--space-3); padding-bottom: var(--space-2); border-bottom: 1px solid var(--color-border-light);">Cabeçalho</h3>
-            
-            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-3); margin-bottom: var(--space-5);">
-              <div class="form-group">
-                <label class="form-label">Data Prevista <span style="color: var(--color-danger);">*</span></label>
-                <input type="datetime-local" id="mi-previsao" class="form-input" required>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Transportadora (Opcional)</label>
-                <select class="form-select" id="mi-transportadora">
-                  <option value="">Selecione...</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Placa do Veículo (Opcional)</label>
-                <select class="form-select" id="mi-placa">
-                  <option value="">Selecione...</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Motorista (Opcional)</label>
-                <select class="form-select" id="mi-motorista">
-                  <option value="">Selecione...</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Local de Partida <span style="color: var(--color-danger);">*</span></label>
-                <select id="mi-local-partida" class="form-select" required>
-                  <option value="">Selecione...</option>
-                  <option value="PLY" ${mi && mi.local_partida === 'PLY' ? 'selected' : ''}>PLY</option>
-                  <option value="OSB" ${mi && mi.local_partida === 'OSB' ? 'selected' : ''}>OSB</option>
-                  <option value="PLUS" ${mi && mi.local_partida === 'PLUS' ? 'selected' : ''}>PLUS</option>
-                </select>
-              </div>
-              <div class="form-group" style="grid-column: span 3;">
-                <label class="form-label">Destino / Cliente (Opcional)</label>
-                <input type="text" id="mi-cliente" class="form-input" placeholder="Cliente de destino..." value="${mi ? (mi.cliente || '') : ''}">
-              </div>
-              <div class="form-group" style="grid-column: span 4;">
-                <label class="form-label">Buscar Pedido SAP (Preenche os itens)</label>
-                <select id="mi-pedido" class="form-select">
-                  <option value="">Selecione um pedido para carregar...</option>
-                </select>
+            <!-- Dados Gerais (Cabeçalho) -->
+            <div style="background: var(--color-surface-alt); padding: var(--space-4); border-radius: var(--radius-md); margin-bottom: var(--space-6); border: 1px solid var(--color-border-light);">
+              <h3 style="font-size: var(--font-size-base); margin-bottom: var(--space-4); color: var(--color-text);">Dados Gerais (Cabeçalho)</h3>
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-4);">
+                
+                <div class="form-group">
+                  <label class="form-label">Previsão de Carga <span style="color: var(--color-danger);">*</span></label>
+                  <input type="datetime-local" class="form-input" id="mi-previsao" required>
+                </div>
+                
+                <div class="form-group">
+                  <label class="form-label">Local de Partida <span style="color: var(--color-danger);">*</span></label>
+                  <select id="mi-local-partida" class="form-select" required>
+                    <option value="">Selecione...</option>
+                    <option value="PLY" ${mi && mi.local_partida === 'PLY' ? 'selected' : ''}>PLY</option>
+                    <option value="OSB" ${mi && mi.local_partida === 'OSB' ? 'selected' : ''}>OSB</option>
+                    <option value="PLUS" ${mi && mi.local_partida === 'PLUS' ? 'selected' : ''}>PLUS</option>
+                  </select>
+                </div>
+                
+                <div class="form-group">
+                  <label class="form-label">Transportadora (Opcional)</label>
+                  <select class="form-select" id="mi-transportadora">
+                    <option value="">Selecione...</option>
+                  </select>
+                </div>
+                
+                <div class="form-group">
+                  <label class="form-label">Motorista (Opcional)</label>
+                  <select class="form-select" id="mi-motorista">
+                    <option value="">Selecione...</option>
+                  </select>
+                </div>
+                
+                <div class="form-group">
+                  <label class="form-label">Placa (Tração) (Opcional)</label>
+                  <select class="form-select" id="mi-placa">
+                    <option value="">Selecione...</option>
+                  </select>
+                </div>
+
               </div>
             </div>
             
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-3); padding-bottom: var(--space-2); border-bottom: 1px solid var(--color-border-light);">
-              <h3 style="font-size: var(--font-size-base); color: var(--color-text);">Itens da OC</h3>
-              <button type="button" id="btn-add-mi-item" class="btn btn-sm btn-secondary">
+            <!-- Itens -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4);">
+              <h3 style="font-size: var(--font-size-lg); color: var(--color-text);">Itens da Remessa</h3>
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-add-mi-item">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                Adicionar Item Avulso
+                Adicionar Pedido
               </button>
             </div>
             
             <table class="table" style="margin-bottom: var(--space-4);">
               <thead>
                 <tr>
-                  <th style="width: 40px;"></th>
-                  <th>Item</th>
-                  <th style="width: 150px;">Tipo</th>
-                  <th style="width: 150px;">Qtd (m³)</th>
-                  <th style="width: 60px;">Ações</th>
+                  <th style="width: 30%;">Pedido & Destino</th>
+                  <th style="width: 40%;">Item</th>
+                  <th style="width: 25%;">Programação</th>
+                  <th style="width: 50px;">Ações</th>
                 </tr>
               </thead>
               <tbody id="mi-items-tbody">
               </tbody>
             </table>
             
-            <div id="mi-empty-state" style="text-align: center; padding: var(--space-6); color: var(--color-text-secondary); border: 1px dashed var(--color-border); border-radius: var(--radius-md); margin-top: var(--space-2);">
-              Nenhum item adicionado.
+            <div id="mi-empty-state" style="text-align: center; padding: var(--space-8); color: var(--color-text-secondary); border: 1px dashed var(--color-border); border-radius: var(--radius-md);">
+              Nenhum pedido adicionado à ordem de carregamento.
             </div>
 
           </form>
@@ -370,48 +377,6 @@ async function initMercadoInternoForm(isEdit, mi) {
       filteredMotoristas.map(m => `<option value="${m.nome}">${m.nome}</option>`).join('');
   });
 
-  const selectPedido = document.getElementById('mi-pedido');
-  selectPedido.innerHTML = '<option value="">Selecione um pedido para carregar...</option>' + 
-    ordersCache.map(o => `<option value="${o.DocNum}">${o.DocNum} - ${o.CardName || o.CardCode}</option>`).join('');
-  
-  selectPedido.addEventListener('change', async () => {
-    const docNum = selectPedido.value;
-    if (!docNum) return;
-    
-    const order = ordersCache.find(o => o.DocNum == docNum);
-    if (!order) return;
-    
-    document.getElementById('mi-cliente').value = order.CardName || order.CardCode || '';
-    
-    // Clear existing
-    document.getElementById('mi-items-tbody').innerHTML = '';
-    
-    for (const line of (order.DocumentLines || [])) {
-      if (line.RemainingOpenQuantity <= 0) continue;
-      
-      let volumeM3 = 0;
-      if (line.MeasureUnit && line.MeasureUnit.toUpperCase() === 'CH') {
-        const comp = parseFloat(line.SalesFactor1) || 0;
-        const larg = parseFloat(line.SalesFactor2) || 0;
-        const bitola = parseFloat(line.SalesFactor3) || 0;
-        volumeM3 = comp * larg * bitola * line.RemainingOpenQuantity;
-      } else {
-        volumeM3 = line.RemainingOpenQuantity; // Assume M3
-      }
-      
-      const itemData = {
-        item_code: line.ItemCode,
-        item_name: line.ItemDescription,
-        tipo: 'Obrigatório',
-        quantidade_programada: volumeM3
-      };
-      
-      addMercadoInternoItemRow(itemData);
-    }
-    
-    document.getElementById('mi-empty-state').style.display = document.getElementById('mi-items-tbody').children.length > 0 ? 'none' : 'block';
-  });
-
   document.getElementById('btn-add-mi-item').addEventListener('click', () => {
     addMercadoInternoItemRow();
   });
@@ -429,23 +394,44 @@ async function initMercadoInternoForm(isEdit, mi) {
       document.getElementById('mi-previsao').value = localISOTime;
     }
     
-    if (mi.expedicao_ordens_carregamento_itens && mi.expedicao_ordens_carregamento_itens.length > 0) {
-      mi.expedicao_ordens_carregamento_itens.forEach(item => {
-        addMercadoInternoItemRow(item);
-      });
-      document.getElementById('mi-empty-state').style.display = 'none';
-    } else {
-      addMercadoInternoItemRow();
-    }
-    
     if (mi.transportadora) {
        document.getElementById('mi-transportadora').value = mi.transportadora;
-       // Dispara o change para filtrar as placas/motoristas
-       const event = new Event('change');
-       document.getElementById('mi-transportadora').dispatchEvent(event);
+       document.getElementById('mi-transportadora').dispatchEvent(new Event('change'));
     }
     if (mi.placa) document.getElementById('mi-placa').value = mi.placa;
     if (mi.motorista) document.getElementById('mi-motorista').value = mi.motorista;
+    
+    if (mi.expedicao_ordens_carregamento_itens && mi.expedicao_ordens_carregamento_itens.length > 0) {
+      mi.expedicao_ordens_carregamento_itens.forEach(item => {
+        const tr = addMercadoInternoItemRow();
+        tr.querySelector('.mi-item-db-id').value = item.id;
+        
+        const selectPedido = tr.querySelector('.mi-pedido-select');
+        selectPedido.value = item.pedido_numero;
+        selectPedido.dispatchEvent(new Event('change'));
+        
+        setTimeout(() => {
+          const selectItem = tr.querySelector('.mi-item-select');
+          const options = Array.from(selectItem.options);
+          const match = options.find(o => o.dataset.realcode === item.item_code);
+          if (match) {
+            selectItem.value = match.value;
+          } else {
+            selectItem.value = item.item_code;
+          }
+          selectItem.dispatchEvent(new Event('change'));
+          
+          const selectTipo = tr.querySelector('.mi-tipo-select');
+          selectTipo.value = item.tipo;
+          selectTipo.dispatchEvent(new Event('change'));
+          
+          const inputQtdProg = tr.querySelector('.mi-qtd-prog');
+          inputQtdProg.value = item.quantidade_programada;
+        }, 100);
+      });
+    } else {
+      addMercadoInternoItemRow();
+    }
   } else {
     // New
     const date = new Date();
@@ -458,42 +444,129 @@ async function initMercadoInternoForm(isEdit, mi) {
   overlay.style.display = 'none';
 }
 
-function addMercadoInternoItemRow(existingItem = null) {
+function addMercadoInternoItemRow() {
   const tbody = document.getElementById('mi-items-tbody');
-  document.getElementById('mi-empty-state').style.display = 'none';
+  const emptyState = document.getElementById('mi-empty-state');
+  
+  emptyState.style.display = 'none';
   
   const tr = document.createElement('tr');
+  const uniqueId = 'item_' + Math.random().toString(36).substr(2, 9);
+  tr.id = uniqueId;
+  
+  // Options for Pedido
+  const uniquePedidos = ordersCache.map(p => p.DocNum);
+  const pedidoOptions = `<option value="">Selecione...</option>` + 
+    uniquePedidos.map(num => `<option value="${num}">${num}</option>`).join('');
+
   tr.innerHTML = `
-    <td style="text-align: center; color: var(--color-text-secondary);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg></td>
-    <td style="position: relative;">
-      <input type="hidden" class="mi-item-db-id" value="${existingItem ? existingItem.id || '' : ''}" />
-      <input type="text" class="form-input mi-item-input" placeholder="Digite para buscar..." autocomplete="off" required style="width: 100%;">
+    <td style="vertical-align: top;">
+      <div style="display: flex; flex-direction: column; gap: var(--space-2);">
+        <input type="hidden" class="mi-item-db-id" />
+        <select class="form-select mi-pedido-select" style="width: 100%;" required>
+          ${pedidoOptions}
+        </select>
+        <input type="text" class="form-input mi-destino" readonly placeholder="Destino" style="width: 100%; background: var(--color-surface-alt); font-size: 11px;" />
+        <input type="hidden" class="mi-cod-pn" />
+      </div>
     </td>
-    <td>
-      <select class="form-select mi-tipo-select" style="width: 100%;" required>
-        <option value="Obrigatório" ${existingItem && existingItem.tipo === 'Obrigatório' ? 'selected' : ''}>Obrigatório</option>
-        <option value="Complementar" ${existingItem && existingItem.tipo === 'Complementar' ? 'selected' : ''}>Complementar</option>
-      </select>
+    <td style="vertical-align: top;">
+      <div style="display: flex; flex-direction: column; gap: var(--space-2);">
+        <select class="form-select mi-item-select" style="width: 100%;" required disabled>
+          <option value="">Selecione um pedido primeiro...</option>
+        </select>
+        <div style="display: flex; gap: var(--space-2); align-items: center;">
+          <span style="font-size: 11px; color: var(--color-text-secondary); white-space: nowrap;">Vol Pendente (m³):</span>
+          <input type="number" class="form-input mi-qtd-pendente" readonly style="width: 100px; background: var(--color-surface-alt);" />
+          <small class="mi-qtd-info" style="font-size: 10px; color: var(--color-text-secondary);"></small>
+        </div>
+      </div>
     </td>
-    <td>
-      <input type="number" class="form-input mi-qtd-prog" placeholder="Ex: 40" value="${existingItem && existingItem.quantidade_programada ? parseFloat(existingItem.quantidade_programada).toFixed(4) : ''}" step="any" required>
+    <td style="vertical-align: top;">
+      <div style="display: flex; flex-direction: column; gap: var(--space-2);">
+        <select class="form-select mi-tipo-select" style="width: 100%;" required>
+          <option value="Obrigatório">Obrigatório</option>
+          <option value="Complementar">Complementar</option>
+        </select>
+        <input type="number" step="0.01" class="form-input mi-qtd-prog" placeholder="Vol a Programar (m³)" style="width: 100%;" required />
+      </div>
     </td>
-    <td style="text-align: center;">
-      <button type="button" class="btn btn-sm btn-icon btn-remove-mi-item" title="Remover" style="color: var(--color-danger);">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+    <td style="text-align: center; vertical-align: middle;">
+      <button type="button" class="btn btn-sm btn-icon btn-remove-row" style="color: var(--color-danger);">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
       </button>
     </td>
   `;
   
-  if (existingItem) {
-    tr.querySelector('.mi-item-input').value = existingItem.item_code + ' - ' + (existingItem.item_name || '');
-  }
+  tbody.appendChild(tr);
+  
+  bindMercadoInternoRowEvents(tr);
+  
+  return tr;
+}
+
+function bindMercadoInternoRowEvents(tr) {
+  const btnRemove = tr.querySelector('.btn-remove-row');
+  btnRemove.addEventListener('click', () => {
+    tr.remove();
+    const tbody = document.getElementById('mi-items-tbody');
+    if (tbody.children.length === 0) {
+      document.getElementById('mi-empty-state').style.display = 'block';
+    }
+  });
+
+  const selectPedido = tr.querySelector('.mi-pedido-select');
+  const inputDestino = tr.querySelector('.mi-destino');
+  const inputCodPn = tr.querySelector('.mi-cod-pn');
+  const selectItem = tr.querySelector('.mi-item-select');
   
   const selectTipo = tr.querySelector('.mi-tipo-select');
   const inputQtdProg = tr.querySelector('.mi-qtd-prog');
-
-  function updateQtdState() {
-    if (selectTipo.value === 'Complementar') {
+  const inputQtdPendente = tr.querySelector('.mi-qtd-pendente');
+  
+  selectPedido.addEventListener('change', (e) => {
+    const val = e.target.value;
+    if (!val) {
+      inputDestino.value = '';
+      selectItem.innerHTML = '<option value="">Selecione um pedido primeiro...</option>';
+      selectItem.disabled = true;
+      return;
+    }
+    
+    const pedido = ordersCache.find(p => String(p.DocNum) === String(val));
+    if (pedido) {
+      inputDestino.value = `${pedido.CardName || ''} (${pedido.CardCode || ''})`;
+      inputCodPn.value = pedido.CardCode || '';
+      
+      let itemOptions = '<option value="">Selecione o Item...</option>';
+      pedido.DocumentLines.forEach((line, index) => {
+        // Exibir m3 na tela mas carregar informações
+        itemOptions += `<option value="${line.ItemCode}__${index}" data-realcode="${line.ItemCode}" data-name="${line.ItemDescription}" data-pendente="${line.VolumeM3 || 0}">${line.ItemCode} - ${line.ItemDescription}</option>`;
+      });
+      
+      selectItem.innerHTML = itemOptions;
+      selectItem.disabled = false;
+    }
+  });
+  
+  selectItem.addEventListener('change', (e) => {
+    const option = e.target.selectedOptions[0];
+    if (option && option.value) {
+      const pendente = parseFloat(option.dataset.pendente) || 0;
+      
+      inputQtdPendente.value = pendente > 0 ? pendente.toFixed(4) : 0;
+      
+      if (selectTipo.value === 'Obrigatório') {
+        inputQtdProg.max = pendente > 0 ? pendente : 0;
+      }
+    } else {
+      inputQtdPendente.value = '';
+    }
+  });
+  
+  selectTipo.addEventListener('change', (e) => {
+    const tipo = e.target.value;
+    if (tipo === 'Complementar') {
       inputQtdProg.value = '';
       inputQtdProg.disabled = true;
       inputQtdProg.required = false;
@@ -501,88 +574,19 @@ function addMercadoInternoItemRow(existingItem = null) {
       inputQtdProg.disabled = false;
       inputQtdProg.required = true;
     }
-  }
-
-  selectTipo.addEventListener('change', updateQtdState);
-  updateQtdState(); // Run once for initial state
-  
-  // Custom dropdown logic
-  const inputItem = tr.querySelector('.mi-item-input');
-  const dropdownItem = document.createElement('div');
-  dropdownItem.className = 'mi-item-dropdown';
-  dropdownItem.style.cssText = 'display: none; position: fixed; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); box-shadow: 0 4px 12px rgba(0,0,0,0.15); max-height: 250px; overflow-y: auto; z-index: 999999;';
-  document.body.appendChild(dropdownItem);
-
-  const options = expedicaoItemsCache.map(i => {
-    const display = i.ForeignName || i.ItemName;
-    return { text: `${i.ItemCode} - ${display}` };
   });
-
-  function positionDropdown() {
-    const rect = inputItem.getBoundingClientRect();
-    dropdownItem.style.top = (rect.bottom + 4) + 'px';
-    dropdownItem.style.left = rect.left + 'px';
-    dropdownItem.style.width = rect.width + 'px';
-  }
-
-  function renderDropdown(filterText = '') {
-    const lowerFilter = filterText.toLowerCase();
-    const filtered = options.filter(o => o.text.toLowerCase().includes(lowerFilter));
-    dropdownItem.innerHTML = filtered.map(o => `
-      <div class="mi-dropdown-option" style="padding: 10px 12px; cursor: pointer; border-bottom: 1px solid var(--color-border-light); font-size: 13px;" data-value="${o.text}">
-        ${o.text}
-      </div>
-    `).join('');
+  
+  inputQtdProg.addEventListener('input', (e) => {
+    const prog = parseFloat(e.target.value) || 0;
+    const pendente = parseFloat(inputQtdPendente.value) || 0;
     
-    dropdownItem.querySelectorAll('.mi-dropdown-option').forEach(opt => {
-      opt.addEventListener('mousedown', (e) => { // mousedown runs before blur
-        inputItem.value = e.currentTarget.dataset.value;
-        dropdownItem.style.display = 'none';
-      });
-      opt.addEventListener('mouseenter', (e) => {
-        e.currentTarget.style.background = 'var(--color-bg-hover, #f3f4f6)';
-      });
-      opt.addEventListener('mouseleave', (e) => {
-        e.currentTarget.style.background = '';
-      });
-    });
-  }
-
-  inputItem.addEventListener('focus', () => {
-    positionDropdown();
-    renderDropdown(inputItem.value);
-    dropdownItem.style.display = 'block';
-  });
-
-  inputItem.addEventListener('input', () => {
-    positionDropdown();
-    renderDropdown(inputItem.value);
-    dropdownItem.style.display = 'block';
-  });
-
-  inputItem.addEventListener('blur', () => {
-    dropdownItem.style.display = 'none';
-  });
-  
-  const modalBody = document.getElementById('mi-modal-container')?.querySelector('.modal-body');
-  if (modalBody) {
-    modalBody.addEventListener('scroll', () => {
-      dropdownItem.style.display = 'none';
-    }, { passive: true });
-  }
-
-  tr.querySelector('.btn-remove-mi-item').addEventListener('click', () => {
-    if (dropdownItem && dropdownItem.parentNode) {
-      dropdownItem.parentNode.removeChild(dropdownItem);
-    }
-    tr.remove();
-    if (tbody.children.length === 0) {
-      document.getElementById('mi-empty-state').style.display = 'block';
+    if (selectTipo.value === 'Obrigatório') {
+      if (prog > pendente) {
+        showToast('Quantidade programada não pode exceder a pendente!', 'error');
+        e.target.value = pendente.toFixed(4);
+      }
     }
   });
-  
-  tbody.appendChild(tr);
-  return tr;
 }
 
 async function saveMercadoInterno(isEdit, editId) {
@@ -594,34 +598,43 @@ async function saveMercadoInterno(isEdit, editId) {
     return;
   }
   
+  const transpSelect = document.getElementById('mi-transportadora');
+  const transportadora = transpSelect.value;
+  const transportadoraCod = transpSelect.selectedOptions[0]?.dataset?.cod || null;
+  const placa = document.getElementById('mi-placa').value;
+  const motorista = document.getElementById('mi-motorista').value;
+  
   const tbody = document.getElementById('mi-items-tbody');
   const rows = tbody.querySelectorAll('tr');
   if (rows.length === 0) {
     showToast('Adicione pelo menos um item à ordem.', 'error');
     return;
   }
-  
-  const pedidoSelecionado = document.getElementById('mi-pedido').value;
 
   const itens = [];
   for (const tr of rows) {
-    const itemInput = tr.querySelector('.mi-item-input').value.trim();
-    if (!itemInput) {
-      showToast('Selecione um item em todas as linhas.', 'error');
+    const pedidoSelect = tr.querySelector('.mi-pedido-select');
+    const itemSelect = tr.querySelector('.mi-item-select');
+    
+    const pedidoNumero = pedidoSelect.value;
+    if (!pedidoNumero) {
+      showToast('Selecione o pedido em todas as linhas.', 'error');
       return;
     }
     
-    const parts = itemInput.split(' - ');
-    const itemCode = parts[0];
-    const itemName = parts.slice(1).join(' - ');
+    if (!itemSelect.value) {
+      showToast('Selecione o item em todas as linhas.', 'error');
+      return;
+    }
+    
+    const selectedOption = itemSelect.selectedOptions[0];
+    const realCode = selectedOption.dataset.realcode;
+    const itemName = selectedOption.dataset.name;
+    const codPn = tr.querySelector('.mi-cod-pn').value;
+    
     const tipo = tr.querySelector('.mi-tipo-select').value;
     const qtdProg = tr.querySelector('.mi-qtd-prog').value;
     const dbId = tr.querySelector('.mi-item-db-id').value;
-    
-    if (!itemCode) {
-      showToast('Selecione um item válido em todas as linhas.', 'error');
-      return;
-    }
     
     if (tipo === 'Obrigatório' && !qtdProg) {
       showToast('A Quantidade é obrigatória nos itens do tipo Obrigatório.', 'error');
@@ -629,8 +642,9 @@ async function saveMercadoInterno(isEdit, editId) {
     }
     
     const newItem = {
-      pedido_numero: pedidoSelecionado || 'MERCADO INTERNO',
-      item_code: itemCode,
+      pedido_numero: pedidoNumero,
+      cod_pn: codPn,
+      item_code: realCode,
       item_name: itemName,
       tipo: tipo,
       quantidade_programada: tipo === 'Obrigatório' ? (parseFloat(qtdProg.replace(',', '.')) || 0) : null
@@ -648,10 +662,10 @@ async function saveMercadoInterno(isEdit, editId) {
       bplid: getBPLID(),
       tipo: 'mercado_interno',
       previsao_carga: new Date(previsao).toISOString(),
-      transportadora: document.getElementById('mi-transportadora').value || null,
-      placa: document.getElementById('mi-placa').value || null,
-      motorista: document.getElementById('mi-motorista').value || null,
-      cliente: document.getElementById('mi-cliente').value || null,
+      transportadora: transportadora || null,
+      transportadora_cod: transportadoraCod || null,
+      placa: placa || null,
+      motorista: motorista || null,
       local_partida: localPartida,
       liberado_carregamento: true
     };
