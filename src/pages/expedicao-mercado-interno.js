@@ -25,7 +25,7 @@ export async function fetchOrders() {
   if (ordersCache.length > 0) return ordersCache;
   try {
     const bplid = getBPLID();
-    const url = "/api/SQLQueries('PedidoCompMI')/List?Prefer=odata.maxpagesize=0";
+    const url = "/api/SQLQueries('PedidoCompMI')/List";
     const res = await fetch(url, { headers: { 'ngrok-skip-browser-warning': 'true', 'Prefer': 'odata.maxpagesize=0', 'Cache-Control': 'no-cache, no-store, must-revalidate' } });
     if (res.ok) {
       const data = await res.json();
@@ -38,9 +38,16 @@ export async function fetchOrders() {
 
       const grouped = {};
       for (const row of filtered) {
-         const docNum = row["Número"] || row["'Número'"] || row.DocEntry;
+         const keys = Object.keys(row);
+         
+         const docNumKey = keys.find(k => k.includes('mero') || k.includes('DocEntry') || k === 'DocNum');
+         const cardNameKey = keys.find(k => k.includes('Nome do PN'));
+         const itemKey = keys.find(k => k.includes('ITEM') || k.includes('Dscription'));
+         const qtyKey = keys.find(k => k.includes('Pendente') || k.includes('OpenInvQty'));
+         
+         const docNum = row[docNumKey];
          const cardCode = row.CardCode || row["'CardCode'"];
-         const cardName = row["Nome do PN"] || row["'Nome do PN'"];
+         const cardName = row[cardNameKey];
          
          if (!grouped[docNum]) {
             grouped[docNum] = {
@@ -51,11 +58,11 @@ export async function fetchOrders() {
             };
          }
          
-         const itemDesc = row.ITEM || row["'ITEM'"];
+         const itemDesc = row[itemKey];
          const frgnName = row.FrgnName || row["'FrgnName'"];
          const itemCode = frgnName || itemDesc;
          
-         const openQty = row["Quantidade Pendente"] || row["'Quantidade Pendente'"] || 0;
+         const openQty = row[qtyKey] || 0;
          const measureUnit = row.unitMsr || row["'unitMsr'"];
          
          // Calculate Volume directly
