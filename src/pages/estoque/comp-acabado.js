@@ -311,7 +311,7 @@ export function bindEstoqueCompAcabadoEvents() {
   }
 
   const container = document.getElementById('estoque-dashboard-container');
-  if (container) {
+  if (container && !container.dataset.eventsBound) {
     container.addEventListener('change', (e) => {
       if (e.target.classList.contains('chk-select-estoque')) {
         const key = e.target.value;
@@ -328,6 +328,7 @@ export function bindEstoqueCompAcabadoEvents() {
         renderEstoqueDashboard();
       }
     });
+    container.dataset.eventsBound = 'true';
   }
 }
 
