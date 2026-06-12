@@ -180,6 +180,7 @@ export function renderEstoqueDashboard() {
             <tr>
               <th style="font-size: var(--font-size-xs);">Cód. Item</th>
               <th style="font-size: var(--font-size-xs);">Descrição</th>
+              <th style="font-size: var(--font-size-xs);">Local</th>
               <th style="font-size: var(--font-size-xs);">Qualidade</th>
               <th style="font-size: var(--font-size-xs); text-align: right;">Caixas</th>
               <th style="font-size: var(--font-size-xs); text-align: right;">Volume (m³)</th>
@@ -209,13 +210,15 @@ function getGroupedItemsForTable() {
   const byItem = filteredEstoque.reduce((acc, curr) => {
     const cod = curr.cod_item || 'N/A';
     const qual = curr.qualidade || 'N/A';
-    const key = `${cod}_${qual}`;
+    const local = curr.local_estoque || 'N/A';
+    const key = `${cod}_${qual}_${local}`;
     
     if (!acc[key]) {
       acc[key] = {
         cod: cod,
         nome: curr.nome_item,
         qualidade: qual,
+        local: local,
         fardos: 0,
         m3: 0
       };
@@ -246,7 +249,7 @@ function renderEstoqueItemTable() {
   const rows = getGroupedItemsForTable();
 
   if (rows.length === 0) {
-    return `<tr><td colspan="5" style="text-align: center; padding: var(--space-8); color: var(--color-text-secondary);">Nenhum detalhe disponível.</td></tr>`;
+    return `<tr><td colspan="6" style="text-align: center; padding: var(--space-8); color: var(--color-text-secondary);">Nenhum detalhe disponível.</td></tr>`;
   }
 
   return rows.map((data) => {
@@ -261,6 +264,7 @@ function renderEstoqueItemTable() {
     <tr>
       <td style="padding: 6px 12px; font-family: monospace; font-weight: var(--font-weight-semibold); color: var(--color-text);">${data.cod}</td>
       <td style="padding: 6px 12px; font-weight: var(--font-weight-medium); color: var(--color-text);">${data.nome || '-'}</td>
+      <td style="padding: 6px 12px; color: var(--color-text-secondary);">${data.local !== 'N/A' ? data.local : '-'}</td>
       <td style="padding: 6px 12px;"><span class="badge" style="${badgeStyle}">${qualDisplay}</span></td>
       <td style="padding: 6px 12px; text-align: right; font-weight: var(--font-weight-semibold);">${data.fardos}</td>
       <td style="padding: 6px 12px; text-align: right; color: var(--color-primary); font-weight: var(--font-weight-semibold);">${data.m3.toFixed(3).replace('.', ',')}</td>
