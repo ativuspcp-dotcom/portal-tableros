@@ -17,7 +17,8 @@ window.addEventListener('amarracao_created', () => {
 
 window.addEventListener('amarracoes_producao_changed', () => {
   if (activeMainTab === 'producao' && activeSubTab === 'amarracoes') {
-    renderPCP();
+    document.getElementById('pcp-tab-content').innerHTML = renderActiveTabView();
+    bindAmarracoesProducaoEvents();
   }
 });
 
