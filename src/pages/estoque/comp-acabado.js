@@ -4,6 +4,7 @@ let estoqueCompAcabado = [];
 let filteredEstoque = [];
 let localFilter = '';
 let searchFilter = '';
+let selectedGroups = new Set();
 
 const qualidadeOrder = {
   '-': 1,
@@ -56,6 +57,7 @@ export function applyEstoqueFilters() {
     return matchLocal && matchSearch;
   });
 
+  selectedGroups.clear();
   renderEstoqueDashboard();
 }
 
@@ -178,6 +180,7 @@ export function renderEstoqueDashboard() {
         <table class="table">
           <thead>
             <tr>
+              <th style="width: 40px; text-align: center;"><input type="checkbox" id="chk-select-all-estoque" style="cursor: pointer;"></th>
               <th style="font-size: var(--font-size-xs);">Cód. Item</th>
               <th style="font-size: var(--font-size-xs);">Descrição</th>
               <th style="font-size: var(--font-size-xs);">Local</th>
@@ -215,6 +218,7 @@ function getGroupedItemsForTable() {
     
     if (!acc[key]) {
       acc[key] = {
+        key: key,
         cod: cod,
         nome: curr.nome_item,
         qualidade: qual,
@@ -249,7 +253,7 @@ function renderEstoqueItemTable() {
   const rows = getGroupedItemsForTable();
 
   if (rows.length === 0) {
-    return `<tr><td colspan="6" style="text-align: center; padding: var(--space-8); color: var(--color-text-secondary);">Nenhum detalhe disponível.</td></tr>`;
+    return `<tr><td colspan="7" style="text-align: center; padding: var(--space-8); color: var(--color-text-secondary);">Nenhum detalhe disponível.</td></tr>`;
   }
 
   return rows.map((data) => {
@@ -260,8 +264,10 @@ function renderEstoqueItemTable() {
         : 'background: rgba(245, 158, 11, 0.15); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.3);')
       : 'background: var(--color-surface-alt); color: var(--color-text-secondary); border: 1px solid var(--color-border);';
 
+    const isChecked = selectedGroups.has(data.key) ? 'checked' : '';
     return `
-    <tr>
+    <tr class="${isChecked ? 'selected-row' : ''}" style="${isChecked ? 'background-color: rgba(59, 130, 246, 0.05);' : ''}">
+      <td style="text-align: center; padding: 6px 12px;"><input type="checkbox" class="chk-select-estoque" value="${data.key}" ${isChecked} style="cursor: pointer;"></td>
       <td style="padding: 6px 12px; font-family: monospace; font-weight: var(--font-weight-semibold); color: var(--color-text);">${data.cod}</td>
       <td style="padding: 6px 12px; font-weight: var(--font-weight-medium); color: var(--color-text);">${data.nome || '-'}</td>
       <td style="padding: 6px 12px; color: var(--color-text-secondary);">${data.local !== 'N/A' ? data.local : '-'}</td>
@@ -303,6 +309,26 @@ export function bindEstoqueCompAcabadoEvents() {
       printEstoqueReport();
     });
   }
+
+  const container = document.getElementById('estoque-dashboard-container');
+  if (container) {
+    container.addEventListener('change', (e) => {
+      if (e.target.classList.contains('chk-select-estoque')) {
+        const key = e.target.value;
+        if (e.target.checked) selectedGroups.add(key);
+        else selectedGroups.delete(key);
+        renderEstoqueDashboard();
+      } else if (e.target.id === 'chk-select-all-estoque') {
+        const checkboxes = document.querySelectorAll('.chk-select-estoque');
+        const isChecked = e.target.checked;
+        checkboxes.forEach(cb => {
+          if (isChecked) selectedGroups.add(cb.value);
+          else selectedGroups.delete(cb.value);
+        });
+        renderEstoqueDashboard();
+      }
+    });
+  }
 }
 
 function printEstoqueReport() {
@@ -313,14 +339,18 @@ function printEstoqueReport() {
   }
 
   const now = new Date().toLocaleString('pt-BR');
-  const totalFardos = filteredEstoque.length;
-  const totalM3 = filteredEstoque.reduce((acc, curr) => acc + (parseFloat(curr.total_calc) || 0), 0);
+  const hasSelection = selectedGroups.size > 0;
+  let allRows = getGroupedItemsForTable();
+  const rows = hasSelection ? allRows.filter(r => selectedGroups.has(r.key)) : allRows;
+
+  const totalFardos = rows.reduce((acc, curr) => acc + curr.fardos, 0);
+  const totalM3 = rows.reduce((acc, curr) => acc + curr.m3, 0);
   
-  const byQualidade = filteredEstoque.reduce((acc, curr) => {
+  const byQualidade = rows.reduce((acc, curr) => {
     const qual = curr.qualidade || 'N/A';
     if (!acc[qual]) acc[qual] = { fardos: 0, m3: 0 };
-    acc[qual].fardos++;
-    acc[qual].m3 += parseFloat(curr.total_calc) || 0;
+    acc[qual].fardos += curr.fardos;
+    acc[qual].m3 += curr.m3;
     return acc;
   }, {});
 
@@ -349,7 +379,6 @@ function printEstoqueReport() {
     `;
   }).join('');
   
-  const rows = getGroupedItemsForTable();
   const rowsHtml = rows.map((data) => {
     const qualDisplay = (data.qualidade === 'N/A' || !data.qualidade) ? '-' : data.qualidade;
     const badgeStyle = qualDisplay !== '-' 
@@ -362,12 +391,13 @@ function printEstoqueReport() {
     <tr>
       <td style="font-family: monospace; border-bottom: 1px solid #e5e7eb; padding: 6px 10px;">${data.cod}</td>
       <td style="border-bottom: 1px solid #e5e7eb; padding: 6px 10px;">${data.nome || '-'}</td>
+      <td style="border-bottom: 1px solid #e5e7eb; padding: 6px 10px;">${data.local !== 'N/A' ? data.local : '-'}</td>
       <td style="border-bottom: 1px solid #e5e7eb; padding: 6px 10px;"><span style="${badgeStyle} padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 600;">${qualDisplay}</span></td>
       <td style="text-align: right; border-bottom: 1px solid #e5e7eb; padding: 6px 10px;">${data.fardos}</td>
       <td style="text-align: right; color: #111; font-weight: bold; border-bottom: 1px solid #e5e7eb; padding: 6px 10px;">${data.m3.toFixed(3).replace('.', ',')}</td>
     </tr>
     `;
-  }).join('') || '<tr><td colspan="5" style="text-align: center; padding: 20px;">Nenhum item encontrado.</td></tr>';
+  }).join('') || '<tr><td colspan="6" style="text-align: center; padding: 20px;">Nenhum item encontrado.</td></tr>';
 
   const html = `
     <!DOCTYPE html>
@@ -408,6 +438,7 @@ function printEstoqueReport() {
           <div style="text-align: right; font-size: 11px; color: #555; line-height: 1.4; min-width: 150px;">
             <div>Local: <strong style="color: #111;">${localFilter || 'Todos os Locais'}</strong></div>
             <div>Busca: <strong style="color: #111;">${searchFilter || 'Nenhuma'}</strong></div>
+            <div>Seleção: <strong style="color: #111;">${hasSelection ? 'Apenas Selecionados' : 'Todos'}</strong></div>
             <div style="margin-top: 4px;">Data: <strong style="color: #111;">${now}</strong></div>
           </div>
         </div>
@@ -432,6 +463,7 @@ function printEstoqueReport() {
             <tr>
               <th>Cód. Item</th>
               <th>Descrição</th>
+              <th>Local</th>
               <th>Qualidade</th>
               <th style="text-align: right;">Caixas</th>
               <th style="text-align: right;">Volume (m³)</th>
