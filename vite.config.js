@@ -1,4 +1,8 @@
 import { defineConfig } from 'vite';
+import dns from 'dns';
+
+// Fix Node.js IPv6 DNS resolution bug that causes 5-8s delay on the first proxy request
+dns.setDefaultResultOrder('ipv4first');
 
 export default defineConfig({
   server: {
