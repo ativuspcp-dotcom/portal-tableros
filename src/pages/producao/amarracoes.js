@@ -119,9 +119,9 @@ export function renderAmarracoesProducaoView() {
 
       </div>
       <div class="toolbar-right">
-        <button class="btn btn-outline btn-sm" id="btn-refresh-amarracoes-prod" style="height: 34px;">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;"><path d="M21 2v6h-6"></path><path d="M3 12a9 9 0 1 0 2.13-5.85L7 8"></path><path d="M3 22v-6h6"></path><path d="M21 12a9 9 0 1 0-2.13 5.85L17 16"></path></svg>
-          Atualizar Dados
+        <button class="btn btn-primary btn-sm" id="btn-refresh-amarracoes-prod" style="height: 34px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          Pesquisar
         </button>
       </div>
     </div>
@@ -157,44 +157,36 @@ export function bindAmarracoesProducaoEvents() {
   const startDate = document.getElementById('amarracoes-start-date');
   const endDate = document.getElementById('amarracoes-end-date');
   const searchInput = document.getElementById('amarracoes-search');
+  const btnRefresh = document.getElementById('btn-refresh-amarracoes-prod');
 
-  const triggerDateSearch = async () => {
-    setAmarracoesDateFilter(startDate?.value, endDate?.value);
-    await fetchAmarracoesProducao();
+  const executeSearch = async () => {
+    if (startDate) currentStartDate = startDate.value;
+    if (endDate) currentEndDate = endDate.value;
+    if (searchInput) searchQuery = searchInput.value;
+    
+    if (btnRefresh) {
+      btnRefresh.disabled = true;
+      btnRefresh.innerHTML = 'Pesquisando...';
+    }
+    
+    await fetchAmarracoesProducao(true);
     window.dispatchEvent(new Event('amarracoes_producao_changed'));
   };
 
-  if (startDate) startDate.addEventListener('change', triggerDateSearch);
-  if (endDate) endDate.addEventListener('change', triggerDateSearch);
-  
-  if (searchInput) {
-    searchInput.addEventListener('input', (e) => {
-      searchQuery = e.target.value.toLowerCase();
-      const rows = document.querySelectorAll('#amarracoes-tbody tr');
-      rows.forEach(row => {
-        // Ignora a linha de "Nenhum pacote encontrado"
-        if (row.children.length === 1) return;
-        
-        if (!searchQuery) {
-          row.style.display = '';
-        } else {
-          const text = row.innerText.toLowerCase();
-          row.style.display = text.includes(searchQuery) ? '' : 'none';
-        }
-      });
-    });
+  if (btnRefresh) {
+    btnRefresh.addEventListener('click', executeSearch);
   }
 
-  const btnRefresh = document.getElementById('btn-refresh-amarracoes-prod');
-  if (btnRefresh) {
-    btnRefresh.addEventListener('click', async (e) => {
-      e.currentTarget.disabled = true;
-      e.currentTarget.innerHTML = 'Atualizando...';
-      await fetchAmarracoesProducao(true);
-      window.dispatchEvent(new Event('amarracoes_producao_changed'));
-      showToast('Dados atualizados com sucesso!', 'success');
-    });
-  }
+  // Permite pesquisar ao pressionar "Enter" nos campos
+  const handleEnter = (e) => {
+    if (e.key === 'Enter') {
+      executeSearch();
+    }
+  };
+
+  if (startDate) startDate.addEventListener('keypress', handleEnter);
+  if (endDate) endDate.addEventListener('keypress', handleEnter);
+  if (searchInput) searchInput.addEventListener('keypress', handleEnter);
 
   document.querySelectorAll('.btn-delete-amarracao').forEach(btn => {
     btn.addEventListener('click', async () => {
