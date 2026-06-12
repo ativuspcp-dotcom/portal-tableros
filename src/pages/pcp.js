@@ -443,7 +443,7 @@ let sapFilteredItems = [];
 
 async function fetchCompensadosAcabadosSAP() {
   try {
-    const url = "https://tableros.ngrok.app/Items?$select=ItemCode,ItemName,ForeignName,ItemsGroupCode,SalesFactor1,SalesFactor2,SalesFactor3,SalesFactor4,U_Quality&$filter=ItemsGroupCode eq 106 and Properties1 eq 'tYES'";
+    const url = "/api/Items?$select=ItemCode,ItemName,ForeignName,ItemsGroupCode,SalesFactor1,SalesFactor2,SalesFactor3,SalesFactor4,U_Quality&$filter=ItemsGroupCode eq 106 and Properties1 eq 'tYES'";
     const res = await fetch(url, {
       method: 'GET',
       headers: { 

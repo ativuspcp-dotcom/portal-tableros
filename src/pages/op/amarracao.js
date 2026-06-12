@@ -279,7 +279,7 @@ export function bindAmarracaoEvents() {
 async function fetchSAPItems() {
   if (sapItemsCache.length > 0) return sapItemsCache;
   try {
-    const url = "https://tableros.ngrok.app/Items?$select=ItemCode,ItemName,ForeignName,ItemsGroupCode,SalesFactor1,SalesFactor2,SalesFactor3,SalesFactor4,U_Quality&$filter=ItemsGroupCode eq 106 and Properties1 eq 'tYES'";
+    const url = "/api/Items?$select=ItemCode,ItemName,ForeignName,ItemsGroupCode,SalesFactor1,SalesFactor2,SalesFactor3,SalesFactor4,U_Quality&$filter=ItemsGroupCode eq 106 and Properties1 eq 'tYES'";
     const res = await fetch(url, { headers: { 'ngrok-skip-browser-warning': 'true', 'Prefer': 'odata.maxpagesize=0', 'Cache-Control': 'no-cache, no-store, must-revalidate' } });
     if (res.ok) {
       const data = await res.json();
@@ -296,7 +296,7 @@ async function fetchSAPItems() {
 async function fetchPedidos() {
   if (pedidosCache.length > 0) return pedidosCache;
   try {
-    const url = "https://tableros.ngrok.app/SQLQueries('ContratoME')/List";
+    const url = "/api/SQLQueries('ContratoME')/List";
     const res = await fetch(url, { headers: { 'ngrok-skip-browser-warning': 'true', 'Prefer': 'odata.maxpagesize=0', 'Cache-Control': 'no-cache, no-store, must-revalidate' } });
     if (res.ok) {
       const data = await res.json();
