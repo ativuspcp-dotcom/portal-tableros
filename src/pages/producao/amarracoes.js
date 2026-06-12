@@ -18,7 +18,7 @@ export async function fetchAmarracoesProducao(forceRefresh = false) {
     const { data, error } = await supabase
       .from('amarracoes')
       .select(`
-        id, qrcode, data_producao, created_at, nome_item, qualidade, pecas, total_calc, 
+        id, qrcode, data_producao, created_at, cod_item, nome_item, qualidade, pecas, total_calc, 
         peso, local_producao, responsavel_nome, saida,
         pcp_op_amarracao (
           codigo_op
@@ -48,9 +48,11 @@ export function renderAmarracoesProducaoView() {
      if (!searchQuery) return true;
      const op = pkg.pcp_op_amarracao?.codigo_op || '';
      const item = pkg.nome_item || '';
+     const codItem = pkg.cod_item || '';
      const qr = pkg.qrcode || pkg.id || '';
      return op.toLowerCase().includes(lowerQuery) || 
             item.toLowerCase().includes(lowerQuery) || 
+            codItem.toLowerCase().includes(lowerQuery) || 
             qr.toLowerCase().includes(lowerQuery);
   });
 
@@ -73,7 +75,10 @@ export function renderAmarracoesProducaoView() {
           <td style="padding: 4px 8px;"><div style="font-weight: 500;">${pkg.qrcode || pkg.id.substring(0,8)}</div></td>
           <td style="padding: 4px 8px;">${dateTimeStr}</td>
           <td style="padding: 4px 8px;">${opName}</td>
-          <td style="padding: 4px 8px;"><div style="font-weight: 500;">${pkg.nome_item}</div></td>
+          <td style="padding: 4px 8px;">
+            <div style="font-size: 10px; color: var(--color-text-secondary); font-weight: 600;">${pkg.cod_item || 'S/N'}</div>
+            <div style="font-weight: 500;">${pkg.nome_item}</div>
+          </td>
           <td style="padding: 4px 8px;">${pkg.qualidade || '-'}</td>
           <td style="padding: 4px 8px; text-align: center;">${pkg.pecas || 0}</td>
           <td style="padding: 4px 8px; text-align: center;">${(pkg.total_calc || 0).toFixed(4)}</td>
