@@ -149,7 +149,7 @@ async function loadCadastroData() {
   try {
     // 1. Fetch SAP Empresas (always needed for CNPJ resolution in Placas/Motoristas)
     if (dataCache.empresas.length === 0) {
-      const url = "/api/BusinessPartners?$select=CardCode,CardName,BPFiscalTaxIDCollection&$filter=Properties1 eq 'tYES'";
+      const url = "https://tableros.ngrok.app/BusinessPartners?$select=CardCode,CardName,BPFiscalTaxIDCollection&$filter=Properties1 eq 'tYES'";
       const res = await fetch(url, {
         method: 'GET',
         headers: { 
