@@ -154,7 +154,7 @@ export function renderAmarracoesProducaoView() {
         </div>
 
         <div style="display: flex; flex-direction: column; gap: 4px; flex: 1; max-width: 300px;">
-          <label style="font-size: var(--font-size-xs); font-weight: 500; color: var(--color-text-secondary);">Pesquisar (Item, OP, Etiqueta)</label>
+          <label style="font-size: var(--font-size-xs); font-weight: 500; color: var(--color-text-secondary);">Pesquisar (Cód SAP, Item, OP, Etiqueta)</label>
           <input type="text" id="amarracoes-search" class="form-input" style="height: 34px; font-size: var(--font-size-sm);" placeholder="Buscar..." value="${searchQuery}">
         </div>
 
