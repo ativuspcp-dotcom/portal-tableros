@@ -125,6 +125,9 @@ export function renderEstoqueDashboard() {
     </div>
   `}).join('');
 
+  const visibleRows = getGroupedItemsForTable();
+  const allVisibleSelected = visibleRows.length > 0 && visibleRows.every(r => selectedGroups.has(r.key));
+
   container.innerHTML = `
     <div style="max-width: 1500px; margin: 0 auto; width: 100%;">
     <!-- Toolbar -->
@@ -180,7 +183,7 @@ export function renderEstoqueDashboard() {
         <table class="table">
           <thead>
             <tr>
-              <th style="width: 40px; text-align: center;"><input type="checkbox" id="chk-select-all-estoque" style="cursor: pointer;"></th>
+              <th style="width: 40px; text-align: center;"><input type="checkbox" id="chk-select-all-estoque" style="cursor: pointer;" ${allVisibleSelected ? 'checked' : ''}></th>
               <th style="font-size: var(--font-size-xs);">Cód. Item</th>
               <th style="font-size: var(--font-size-xs);">Descrição</th>
               <th style="font-size: var(--font-size-xs);">Local</th>
