@@ -736,10 +736,8 @@ async function initRemessaForm(isEdit, remessa) {
   overlay.style.display = 'flex';
   
   // Fetch from SAP and Supabase
-  await Promise.all([
-    fetchPedidos(),
-    fetchLogisticaData()
-  ]);
+  await fetchPedidos();
+  await fetchLogisticaData();
   
   // Now that caches are populated, we can show the modal
   // Note: the modal HTML needs to be re-rendered or options appended because 

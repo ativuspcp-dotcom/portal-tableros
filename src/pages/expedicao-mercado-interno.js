@@ -344,11 +344,9 @@ async function initMercadoInternoForm(isEdit, mi) {
   const overlay = document.getElementById('mi-loading-overlay');
   overlay.style.display = 'flex';
   
-  await Promise.all([
-    fetchExpedicaoItems(),
-    fetchOrders(),
-    fetchLogisticaData()
-  ]);
+  await fetchExpedicaoItems();
+  await fetchOrders();
+  await fetchLogisticaData();
 
   const selectTransp = document.getElementById('mi-transportadora');
   if (selectTransp.options.length <= 1) {

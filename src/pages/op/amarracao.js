@@ -576,7 +576,8 @@ function showAmarracaoModal(editId = null) {
 }
 
 async function loadDataAndBindForm(opEdit = null) {
-  const [items, pedidos] = await Promise.all([fetchSAPItems(), fetchPedidos()]);
+  const items = await fetchSAPItems();
+  const pedidos = await fetchPedidos();
   
   const selPedido = document.getElementById('am-pedido-select');
   const selItem = document.getElementById('am-item-code');

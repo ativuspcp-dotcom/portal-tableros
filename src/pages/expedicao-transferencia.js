@@ -275,10 +275,8 @@ async function initTransferenciaForm(isEdit, transf) {
   const overlay = document.getElementById('tf-loading-overlay');
   overlay.style.display = 'flex';
   
-  await Promise.all([
-    fetchExpedicaoItems(),
-    fetchLogisticaData()
-  ]);
+  await fetchExpedicaoItems();
+  await fetchLogisticaData();
 
   const selectTransp = document.getElementById('tf-transportadora');
   // Re-populate transportadora after fetch
