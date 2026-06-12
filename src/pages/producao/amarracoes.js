@@ -3,19 +3,40 @@ import { showToast } from '../../components/toast.js';
 import { confirmDialog } from '../../components/modal.js';
 
 let amarracoesCache = [];
-let amarracoesDateCache = {};
 let currentStartDate = new Date().toISOString().split('T')[0];
 let currentEndDate = new Date().toISOString().split('T')[0];
 let searchQuery = '';
 
-export async function fetchAmarracoesProducao(forceRefresh = false) {
-  const cacheKey = `${currentStartDate}_${currentEndDate}`;
-  if (!forceRefresh && amarracoesDateCache[cacheKey]) {
-    amarracoesCache = amarracoesDateCache[cacheKey];
-    return;
+let currentPage = 0;
+const PAGE_SIZE = 50;
+let hasMoreAmarracoes = true;
+let isFetchingAmarracoes = false;
+
+export async function fetchAmarracoesProducao(forceRefresh = false, loadMore = false) {
+  if (isFetchingAmarracoes) return;
+  
+  if (!loadMore) {
+    currentPage = 0;
+    hasMoreAmarracoes = true;
+    amarracoesCache = [];
   }
+  
+  if (!hasMoreAmarracoes) return;
+  
+  isFetchingAmarracoes = true;
+  
   try {
-    const { data, error } = await supabase
+    let opIds = [];
+    if (searchQuery) {
+       const { data: ops } = await supabase.from('pcp_op_amarracao')
+         .select('id')
+         .ilike('codigo_op', `%${searchQuery}%`);
+       if (ops && ops.length > 0) {
+         opIds = ops.map(o => o.id);
+       }
+    }
+
+    let query = supabase
       .from('amarracoes')
       .select(`
         id, qrcode, data_producao, created_at, cod_item, nome_item, qualidade, pecas, total_calc, 
@@ -26,14 +47,38 @@ export async function fetchAmarracoesProducao(forceRefresh = false) {
       `)
       .gte('data_producao', currentStartDate)
       .lte('data_producao', currentEndDate)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .range(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE - 1);
+
+    if (searchQuery) {
+      const sq = `%${searchQuery}%`;
+      let orClause = `nome_item.ilike.${sq},qrcode.ilike.${sq},cod_item.ilike.${sq}`;
+      if (opIds.length > 0) {
+         orClause += `,op_id.in.(${opIds.join(',')})`;
+      }
+      query = query.or(orClause);
+    }
+
+    const { data, error } = await query;
 
     if (error) throw error;
-    amarracoesDateCache[cacheKey] = data || [];
-    amarracoesCache = data || [];
+    
+    if (data) {
+      if (data.length < PAGE_SIZE) {
+        hasMoreAmarracoes = false;
+      }
+      if (loadMore) {
+        amarracoesCache = [...amarracoesCache, ...data];
+      } else {
+        amarracoesCache = data;
+      }
+      currentPage++;
+    }
   } catch (error) {
     console.error('Error fetching amarracoes:', error);
     showToast('Erro ao carregar amarrações de produção', 'error');
+  } finally {
+    isFetchingAmarracoes = false;
   }
 }
 
@@ -43,22 +88,9 @@ export function setAmarracoesDateFilter(startStr, endStr) {
 }
 
 export function renderAmarracoesProducaoView() {
-  const lowerQuery = searchQuery.toLowerCase();
-  const filteredCache = amarracoesCache.filter(pkg => {
-     if (!searchQuery) return true;
-     const op = pkg.pcp_op_amarracao?.codigo_op || '';
-     const item = pkg.nome_item || '';
-     const codItem = pkg.cod_item || '';
-     const qr = pkg.qrcode || pkg.id || '';
-     return op.toLowerCase().includes(lowerQuery) || 
-            item.toLowerCase().includes(lowerQuery) || 
-            codItem.toLowerCase().includes(lowerQuery) || 
-            qr.toLowerCase().includes(lowerQuery);
-  });
-
-  const tbody = filteredCache.length === 0 
-    ? `<tr><td colspan="10" style="text-align: center; padding: var(--space-8); color: var(--color-text-secondary);">Nenhum pacote amarrado encontrado para estes filtros.</td></tr>`
-    : filteredCache.map(pkg => {
+  const tbody = amarracoesCache.length === 0 && !hasMoreAmarracoes
+    ? `<tr><td colspan="11" style="text-align: center; padding: var(--space-8); color: var(--color-text-secondary);">Nenhum pacote amarrado encontrado para estes filtros.</td></tr>`
+    : amarracoesCache.map(pkg => {
         const opName = pkg.pcp_op_amarracao?.codigo_op || 'Avulso';
         const isSaida = pkg.saida === true;
         
@@ -102,6 +134,10 @@ export function renderAmarracoesProducaoView() {
           </td>
         </tr>
       `}).join('');
+
+  const sentinel = hasMoreAmarracoes
+    ? `<tr id="amarracoes-sentinel"><td colspan="11" style="text-align: center; padding: 16px; color: var(--color-text-secondary);"><div class="spinner" style="width:20px;height:20px;border-width:2px;display:inline-block;margin-right:8px;vertical-align:middle;"></div> Carregando mais pacotes...</td></tr>`
+    : '';
 
   return `
     <div class="toolbar" style="margin-bottom: var(--space-4); display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: flex-end; justify-content: space-between;">
@@ -151,6 +187,7 @@ export function renderAmarracoesProducaoView() {
           </thead>
           <tbody id="amarracoes-tbody">
             ${tbody}
+            ${sentinel}
           </tbody>
         </table>
       </div>
@@ -192,6 +229,17 @@ export function bindAmarracoesProducaoEvents() {
   if (startDate) startDate.addEventListener('keypress', handleEnter);
   if (endDate) endDate.addEventListener('keypress', handleEnter);
   if (searchInput) searchInput.addEventListener('keypress', handleEnter);
+
+  const sentinelEl = document.getElementById('amarracoes-sentinel');
+  if (sentinelEl) {
+    const observer = new IntersectionObserver(async (entries) => {
+      if (entries[0].isIntersecting && !isFetchingAmarracoes) {
+        await fetchAmarracoesProducao(false, true);
+        window.dispatchEvent(new Event('amarracoes_producao_changed'));
+      }
+    }, { rootMargin: '100px' });
+    observer.observe(sentinelEl);
+  }
 
   document.querySelectorAll('.btn-delete-amarracao').forEach(btn => {
     btn.addEventListener('click', async () => {
