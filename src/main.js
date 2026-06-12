@@ -98,11 +98,6 @@ async function boot() {
     const isLogin = window.location.hash.split('?')[0] === '#/login' || !window.location.hash;
     
     if (event === 'SIGNED_IN') {
-      // Warm up the Vercel-to-Ngrok proxy connection to prevent the 8-second DNS penalty
-      try {
-        fetch("/api/Items?$top=1", { headers: { 'ngrok-skip-browser-warning': 'true' } }).catch(() => {});
-      } catch (e) {}
-      
       if (isLogin) {
         navigate('/dashboard');
       }

@@ -486,7 +486,7 @@ export async function fetchRemessas() {
 async function fetchPedidos() {
   if (pedidosCache.length > 0) return pedidosCache;
   try {
-    const url = "/api/SQLQueries('ContratoME')/List";
+    const url = "https://tableros.ngrok.app/SQLQueries('ContratoME')/List";
     const res = await fetch(url, { headers: { 'ngrok-skip-browser-warning': 'true', 'Prefer': 'odata.maxpagesize=0', 'Cache-Control': 'no-cache, no-store, must-revalidate' } });
     if (res.ok) {
       const data = await res.json();
@@ -517,7 +517,7 @@ async function fetchPedidos() {
 export async function fetchLogisticaData() {
   if (empresasCache.length === 0) {
     try {
-      const url = "/api/BusinessPartners?$select=CardCode,CardName,BPFiscalTaxIDCollection&$filter=Properties1 eq 'tYES'";
+      const url = "https://tableros.ngrok.app/BusinessPartners?$select=CardCode,CardName,BPFiscalTaxIDCollection&$filter=Properties1 eq 'tYES'";
       const res = await fetch(url, { headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true', 'Prefer': 'odata.maxpagesize=0' } });
       if (res.ok) {
         const data = await res.json();
