@@ -487,7 +487,7 @@ function showAmarracaoModal(editId = null) {
             </tr>
           </thead>
           <tbody id="cert-tbody">
-            ${['FSC', 'CE2+', 'CE4', 'UKCA', 'CARB'].map(selo => `
+            ${['FSC', 'CE2+', 'CE4', 'UKCA', 'CARB', 'PS1-19'].map(selo => `
               <tr>
                 <td style="font-weight: 500;">${selo}</td>
                 <td style="text-align:center;"><input type="checkbox" class="cert-check" data-selo="${selo}" data-type="certificado" ${isEdit && opEdit.certificacoes && opEdit.certificacoes[selo]?.certificado ? 'checked' : ''} style="accent-color: var(--color-primary);" /></td>
@@ -951,7 +951,7 @@ async function saveAmarracaoOp() {
   }
 
   const certificacoes = {};
-  ['FSC', 'CE2+', 'CE4', 'UKCA', 'CARB'].forEach(selo => {
+  ['FSC', 'CE2+', 'CE4', 'UKCA', 'CARB', 'PS1-19'].forEach(selo => {
     certificacoes[selo] = {
       certificado: document.querySelector(`input.cert-check[data-selo="${selo}"][data-type="certificado"]`).checked,
       carimbo: document.querySelector(`input.cert-check[data-selo="${selo}"][data-type="carimbo"]`).checked,
