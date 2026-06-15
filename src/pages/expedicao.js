@@ -1230,7 +1230,7 @@ async function saveRemessa(isEdit, editId) {
       if (headerError) throw headerError;
       
       // Insert or Update items, delete removed ones
-      const itemsData = itens.map(i => ({ ...i, ordem_id: editId }));
+      const itemsData = itens.map(i => { const p = { ...i, ordem_id: editId }; if (!p.id) delete p.id; return p; });
       const currentIds = itemsData.map(i => i.id).filter(id => id);
       
       let delQuery = supabase.from('expedicao_ordens_carregamento_itens').delete().eq('ordem_id', editId);
@@ -1259,7 +1259,7 @@ async function saveRemessa(isEdit, editId) {
       if (headerError) throw headerError;
       
       // Insert Items
-      const itemsData = itens.map(i => ({ ...i, ordem_id: header.id }));
+      const itemsData = itens.map(i => { const p = { ...i, ordem_id: header.id }; if (!p.id) delete p.id; return p; });
       const { error: itemsError } = await supabase
         .from('expedicao_ordens_carregamento_itens')
         .insert(itemsData);

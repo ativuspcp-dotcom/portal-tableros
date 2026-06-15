@@ -683,7 +683,7 @@ async function saveMercadoInterno(isEdit, editId) {
       if (headerError) throw headerError;
       
       if (itens.length > 0) {
-        const itensPayload = itens.map(i => ({ ...i, ordem_id: editId }));
+        const itensPayload = itens.map(i => { const p = { ...i, ordem_id: editId }; if (!p.id) delete p.id; return p; });
         const currentIds = itensPayload.map(i => i.id).filter(id => id);
         
         let delQuery = supabase.from('expedicao_ordens_carregamento_itens').delete().eq('ordem_id', editId);
@@ -705,7 +705,7 @@ async function saveMercadoInterno(isEdit, editId) {
       if (ocError) throw ocError;
       
       if (itens.length > 0) {
-        const itensPayload = itens.map(i => ({ ...i, ordem_id: ocData.id }));
+        const itensPayload = itens.map(i => { const p = { ...i, ordem_id: ocData.id }; if (!p.id) delete p.id; return p; });
         const { error: insError } = await supabase.from('expedicao_ordens_carregamento_itens').insert(itensPayload);
         if (insError) throw insError;
       }
