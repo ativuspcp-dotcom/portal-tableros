@@ -61,8 +61,8 @@ export async function fetchOrders() {
          }
          
          const itemDesc = row[itemKey];
-         const frgnName = row.FrgnName || row["'FrgnName'"];
-         const itemCode = frgnName || itemDesc;
+         const codeKey = keys.find(k => k.toLowerCase().includes('itemcode') || k === 'ItemCode' || k === "'ItemCode'");
+         const itemCode = codeKey ? row[codeKey] : (row.ItemCode || row["'ItemCode'"] || '');
          
          const openQty = row[qtyKey] || 0;
          const measureUnit = row.unitMsr || row["'unitMsr'"];
