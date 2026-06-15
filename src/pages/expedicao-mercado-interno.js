@@ -62,7 +62,13 @@ export async function fetchOrders() {
          
          const itemDesc = row[itemKey];
          const codeKey = keys.find(k => k.toLowerCase().includes('itemcode') || k === 'ItemCode' || k === "'ItemCode'");
-         const itemCode = codeKey ? row[codeKey] : (row.ItemCode || row["'ItemCode'"] || '');
+         let itemCode = codeKey ? row[codeKey] : (row.ItemCode || row["'ItemCode'"]);
+         
+         if (!itemCode) {
+            const frgnName = row.FrgnName || row["'FrgnName'"];
+            const matched = expedicaoItemsCache.find(i => i.ForeignName === frgnName || i.ItemName === itemDesc);
+            itemCode = matched ? matched.ItemCode : (frgnName || itemDesc);
+         }
          
          const openQty = row[qtyKey] || 0;
          const measureUnit = row.unitMsr || row["'unitMsr'"];
