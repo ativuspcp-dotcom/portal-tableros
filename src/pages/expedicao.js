@@ -543,15 +543,15 @@ export async function fetchLogisticaData() {
     const bplid = getBPLID();
     try {
       if (placasCache.length === 0) {
-        const { data } = await supabase.from('logistica_placas').select('*').eq('bplid', bplid).order('placa');
+        const { data } = await supabase.from('logistica_placas').select('*').contains('filiais_permitidas', [bplid]).order('placa');
         placasCache = data || [];
       }
       if (reboquesCache.length === 0) {
-        const { data } = await supabase.from('logistica_reboques').select('*').eq('bplid', bplid).order('placa');
+        const { data } = await supabase.from('logistica_reboques').select('*').contains('filiais_permitidas', [bplid]).order('placa');
         reboquesCache = data || [];
       }
       if (motoristasCache.length === 0) {
-        const { data } = await supabase.from('logistica_motoristas').select('*').eq('bplid', bplid).order('nome');
+        const { data } = await supabase.from('logistica_motoristas').select('*').contains('filiais_permitidas', [bplid]).order('nome');
         motoristasCache = data || [];
       }
     } catch(e) { console.error('Error fetching Supabase Logistics', e); }

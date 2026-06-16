@@ -178,13 +178,13 @@ async function loadCadastroData() {
 
     // 2. Fetch Supabase Data
     if (activeSubTab === 'placas') {
-      const { data } = await supabase.from('logistica_placas').select('*').eq('bplid', bplid).order('placa');
+      const { data } = await supabase.from('logistica_placas').select('*').contains('filiais_permitidas', [bplid]).order('placa');
       dataCache.placas = data || [];
     } else if (activeSubTab === 'reboques') {
-      const { data } = await supabase.from('logistica_reboques').select('*').eq('bplid', bplid).order('placa');
+      const { data } = await supabase.from('logistica_reboques').select('*').contains('filiais_permitidas', [bplid]).order('placa');
       dataCache.reboques = data || [];
     } else if (activeSubTab === 'motoristas') {
-      const { data } = await supabase.from('logistica_motoristas').select('*').eq('bplid', bplid).order('nome');
+      const { data } = await supabase.from('logistica_motoristas').select('*').contains('filiais_permitidas', [bplid]).order('nome');
       dataCache.motoristas = data || [];
     }
   } catch (err) {
@@ -456,10 +456,28 @@ function showCadastroModal(editId = null) {
     `;
   }
 
+  const bplid = getBPLID();
+  const currentFiliais = obj?.filiais_permitidas || [bplid];
+    
   const modalBody = `
     <form id="cadastro-form">
       <div style="display: flex; flex-direction: column; gap: var(--space-4);">
         ${formFields}
+        
+        <div class="form-group" style="border-top: 1px solid var(--color-border); padding-top: 12px; margin-top: 4px;">
+           <label class="form-label" style="margin-bottom: 8px; display: block;">Filiais Permitidas <span class="required">*</span></label>
+           <div style="display: flex; gap: var(--space-4); margin-bottom: 8px; flex-wrap: wrap;">
+             <label style="display: flex; align-items: center; gap: 8px; font-size: var(--font-size-sm); cursor: pointer;">
+               <input type="checkbox" class="filial-fleet-checkbox" value="1" ${currentFiliais.includes(1) ? 'checked' : ''} /> Tableros PAL (1)
+             </label>
+             <label style="display: flex; align-items: center; gap: 8px; font-size: var(--font-size-sm); cursor: pointer;">
+               <input type="checkbox" class="filial-fleet-checkbox" value="3" ${currentFiliais.includes(3) ? 'checked' : ''} /> Tableros OTC (3)
+             </label>
+             <label style="display: flex; align-items: center; gap: 8px; font-size: var(--font-size-sm); cursor: pointer;">
+               <input type="checkbox" class="filial-fleet-checkbox" value="4" ${currentFiliais.includes(4) ? 'checked' : ''} /> Tableros SFP (4)
+             </label>
+           </div>
+        </div>
         
         <div class="form-group">
            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin-top: 8px;">
@@ -491,9 +509,20 @@ async function saveCadastro(isEdit, editId) {
   btn.disabled = true;
   btn.innerText = 'Salvando...';
   
-  const bplid = getBPLID();
-  let payload = { bplid };
+  let payload = {};
   let tableName = '';
+  
+  const filiaisCheckboxes = document.querySelectorAll('.filial-fleet-checkbox:checked');
+  const filiaisPermitidas = Array.from(filiaisCheckboxes).map(cb => parseInt(cb.value));
+  
+  if (filiaisPermitidas.length === 0) {
+    showToast('Selecione pelo menos uma filial.', 'error');
+    btn.disabled = false;
+    btn.innerText = 'Salvar Registro';
+    return;
+  }
+  
+  payload.filiais_permitidas = filiaisPermitidas;
   
   if (activeSubTab === 'empresas') {
     return; // Read-only from SAP
