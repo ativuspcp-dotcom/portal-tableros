@@ -56,6 +56,7 @@ export async function fetchOrders() {
                DocNum: docNum,
                CardCode: cardCode,
                CardName: cardName,
+               BPLId: row.BPLId !== undefined ? row.BPLId : row["'BPLId'"],
                DocumentLines: []
             };
          }
@@ -555,7 +556,7 @@ function bindMercadoInternoRowEvents(tr) {
       
       let itemOptions = '<option value="">Selecione o Item...</option>';
       pedido.DocumentLines.forEach((line, index) => {
-        itemOptions += `<option value="${line.ItemCode}__${index}" data-realcode="${line.ItemCode}" data-name="${line.ItemDescription}" data-pendente="${line.VolumeM3 || 0}" data-linenum="${line.LineNum !== undefined ? line.LineNum : ''}">${line.ItemCode} - ${line.ItemDescription}</option>`;
+        itemOptions += `<option value="${line.ItemCode}__${index}" data-realcode="${line.ItemCode}" data-name="${line.ItemDescription}" data-pendente="${line.VolumeM3 || 0}" data-linenum="${line.LineNum !== undefined ? line.LineNum : ''}" data-bplid="${pedido.BPLId !== undefined ? pedido.BPLId : ''}">${line.ItemCode} - ${line.ItemDescription}</option>`;
       });
       
       selectItem.innerHTML = itemOptions;
@@ -645,6 +646,7 @@ async function saveMercadoInterno(isEdit, editId) {
     const realCode = selectedOption.dataset.realcode;
     const itemName = selectedOption.dataset.name;
     const lineNum = selectedOption.dataset.linenum;
+    const bplId = selectedOption.dataset.bplid;
     const codPn = tr.querySelector('.mi-cod-pn').value;
     
     const tipo = tr.querySelector('.mi-tipo-select').value;
@@ -662,6 +664,7 @@ async function saveMercadoInterno(isEdit, editId) {
       item_code: realCode,
       item_name: itemName,
       line_num: lineNum ? parseInt(lineNum) : null,
+      bplid: bplId ? parseInt(bplId) : null,
       tipo: tipo,
       quantidade_programada: tipo === 'Obrigatório' ? (parseFloat(qtdProg.replace(',', '.')) || 0) : null
     };
