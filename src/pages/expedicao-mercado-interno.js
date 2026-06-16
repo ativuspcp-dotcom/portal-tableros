@@ -733,3 +733,5 @@ async function saveMercadoInterno(isEdit, editId) {
     document.getElementById('btn-save-mi').textContent = 'Salvar Ordem';
   }
 }
+w i n d o w . a d d E v e n t L i s t e n e r ( ' b r a n c h _ c h a n g e d ' ,   ( )   = >   {   e x p e d i c a o I t e m s C a c h e   =   [ ] ;   o r d e r s C a c h e   =   [ ] ;   } ) ;  
+ 

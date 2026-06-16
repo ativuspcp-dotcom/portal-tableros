@@ -579,3 +579,5 @@ async function saveCadastro(isEdit, editId) {
     btn.innerText = 'Salvar Registro';
   }
 }
+w i n d o w . a d d E v e n t L i s t e n e r ( ' b r a n c h _ c h a n g e d ' ,   ( )   = >   {   d a t a C a c h e . p l a c a s   =   [ ] ;   d a t a C a c h e . r e b o q u e s   =   [ ] ;   d a t a C a c h e . m o t o r i s t a s   =   [ ] ;   i f   ( a c t i v e M a i n T a b   = = =   ' c a d a s t r o s ' )   r e n d e r L o g i s t i c a ( ) ;   } ) ;  
+ 

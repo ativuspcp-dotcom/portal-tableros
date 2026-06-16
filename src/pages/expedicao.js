@@ -1282,6 +1282,15 @@ async function saveRemessa(isEdit, editId) {
 
 // Global listener to fetch data initially if needed
 window.addEventListener('branch_changed', async () => {
+  remessasCache = [];
+  transferenciasCache = [];
+  mercadoInternoCache = [];
+  pedidosCache = [];
+  sapItemsCache = [];
+  empresasCache = [];
+  placasCache = [];
+  reboquesCache = [];
+  motoristasCache = [];
   if (activeMainTab === 'ordem_carregamento') {
     await fetchRemessas();
     renderExpedicao();
