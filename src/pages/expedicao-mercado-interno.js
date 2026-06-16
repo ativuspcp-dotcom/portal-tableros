@@ -89,7 +89,8 @@ export async function fetchOrders() {
             ItemDescription: itemDesc,
             RemainingOpenQuantity: openQty,
             VolumeM3: volumeM3,
-            MeasureUnit: measureUnit
+            MeasureUnit: measureUnit,
+            LineNum: row.LineNum !== undefined ? row.LineNum : row["'LineNum'"]
          });
       }
       ordersCache = Object.values(grouped);
@@ -554,8 +555,7 @@ function bindMercadoInternoRowEvents(tr) {
       
       let itemOptions = '<option value="">Selecione o Item...</option>';
       pedido.DocumentLines.forEach((line, index) => {
-        // Exibir m3 na tela mas carregar informações
-        itemOptions += `<option value="${line.ItemCode}__${index}" data-realcode="${line.ItemCode}" data-name="${line.ItemDescription}" data-pendente="${line.VolumeM3 || 0}">${line.ItemCode} - ${line.ItemDescription}</option>`;
+        itemOptions += `<option value="${line.ItemCode}__${index}" data-realcode="${line.ItemCode}" data-name="${line.ItemDescription}" data-pendente="${line.VolumeM3 || 0}" data-linenum="${line.LineNum !== undefined ? line.LineNum : ''}">${line.ItemCode} - ${line.ItemDescription}</option>`;
       });
       
       selectItem.innerHTML = itemOptions;
@@ -644,6 +644,7 @@ async function saveMercadoInterno(isEdit, editId) {
     const selectedOption = itemSelect.selectedOptions[0];
     const realCode = selectedOption.dataset.realcode;
     const itemName = selectedOption.dataset.name;
+    const lineNum = selectedOption.dataset.linenum;
     const codPn = tr.querySelector('.mi-cod-pn').value;
     
     const tipo = tr.querySelector('.mi-tipo-select').value;
@@ -660,6 +661,7 @@ async function saveMercadoInterno(isEdit, editId) {
       cod_pn: codPn,
       item_code: realCode,
       item_name: itemName,
+      line_num: lineNum ? parseInt(lineNum) : null,
       tipo: tipo,
       quantidade_programada: tipo === 'Obrigatório' ? (parseFloat(qtdProg.replace(',', '.')) || 0) : null
     };
