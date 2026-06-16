@@ -11,7 +11,7 @@ export function getBPLID() {
 export function setBPLID(id) {
   currentBPLID = parseInt(id);
   localStorage.setItem('tableros_bplid', currentBPLID);
-  window.dispatchEvent(new Event('branch_changed'));
+  window.location.reload();
 }
 
 /**
