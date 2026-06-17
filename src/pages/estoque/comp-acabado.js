@@ -338,21 +338,22 @@ export function bindEstoqueCompAcabadoEvents() {
         });
         renderEstoqueDashboard();
       }
-    });
-    container.dataset.eventsBound = 'true';
-    
-    document.querySelectorAll('.btn-view-qrcodes').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const key = e.currentTarget.dataset.key;
-        const rows = getGroupedItemsForTable();
-        const groupData = rows.find(r => r.key === key);
-        if (groupData && groupData.items) {
-          showQRCodesModal(groupData);
+      });
+      
+      container.addEventListener('click', (e) => {
+        const btn = e.target.closest('.btn-view-qrcodes');
+        if (btn) {
+          const key = btn.dataset.key;
+          const rows = getGroupedItemsForTable();
+          const groupData = rows.find(r => r.key === key);
+          if (groupData && groupData.items) {
+            showQRCodesModal(groupData);
+          }
         }
       });
-    });
+      container.dataset.eventsBound = 'true';
+    }
   }
-}
 
 function showQRCodesModal(groupData) {
   const trs = groupData.items.map(item => `
