@@ -61,9 +61,11 @@ export async function printRomaneioReport(ocId) {
 
     let precalcVolume = 0;
     let precalcPeso = 0;
+    let precalcPecas = 0;
     if (scannedPkgs && scannedPkgs.length > 0) {
       precalcVolume = scannedPkgs.reduce((sum, p) => sum + (Number(p.quantidade) || 0), 0);
       precalcPeso = scannedPkgs.reduce((sum, p) => sum + (Number(p.peso) || 0), 0);
+      precalcPecas = scannedPkgs.reduce((sum, p) => sum + (Number(p.pecas) || 0), 0);
     }
 
     // Build Report HTML
@@ -250,6 +252,10 @@ export async function printRomaneioReport(ocId) {
             <span class="info-val">${formatVol(precalcVolume)}</span>
           </div>
           <div class="info-item">
+            <span class="info-label">Peças Total</span>
+            <span class="info-val">${precalcPecas}</span>
+          </div>
+          <div class="info-item">
             <span class="info-label">Peso Total (kg)</span>
             <span class="info-val">${formatPeso(precalcPeso)}</span>
           </div>
@@ -265,9 +271,10 @@ export async function printRomaneioReport(ocId) {
         <table>
           <thead>
             <tr>
-              <th style="width: 40%;">Etiqueta / QR Code</th>
-              <th style="text-align: right; width: 20%;">Volume / Qtd</th>
-              <th style="text-align: right; width: 20%;">Peso (kg)</th>
+              <th style="width: 35%;">Etiqueta / QR Code</th>
+              <th style="text-align: right; width: 15%;">Volume / Qtd</th>
+              <th style="text-align: right; width: 15%;">Peças</th>
+              <th style="text-align: right; width: 15%;">Peso (kg)</th>
               <th style="text-align: center; width: 20%;">Registro (Bipe)</th>
             </tr>
           </thead>
@@ -276,6 +283,7 @@ export async function printRomaneioReport(ocId) {
 
       let totalVolumeGeral = 0;
       let totalPesoGeral = 0;
+      let totalPecasGeral = 0;
       let totalPacotesGeral = 0;
 
       // Group packages by item
@@ -286,9 +294,11 @@ export async function printRomaneioReport(ocId) {
           const expectedVol = Number(item.quantidade_programada) || 0;
           const actualVol = pkgsForThisItem.reduce((sum, p) => sum + (Number(p.quantidade) || 0), 0);
           const actualPeso = pkgsForThisItem.reduce((sum, p) => sum + (Number(p.peso) || 0), 0);
+          const actualPecas = pkgsForThisItem.reduce((sum, p) => sum + (Number(p.pecas) || 0), 0);
 
           totalVolumeGeral += actualVol;
           totalPesoGeral += actualPeso;
+          totalPecasGeral += actualPecas;
           totalPacotesGeral += pkgsForThisItem.length;
 
           html += `
@@ -298,6 +308,7 @@ export async function printRomaneioReport(ocId) {
                 <div class="item-meta">
                   PROGRAMADO: ${formatVol(expectedVol)} &nbsp;|&nbsp; 
                   CARREGADO: ${formatVol(actualVol)} &nbsp;|&nbsp; 
+                  TOTAL DE PEÇAS: ${actualPecas} &nbsp;|&nbsp;
                   TOTAL DE PACOTES: ${pkgsForThisItem.length} &nbsp;|&nbsp;
                   DESTINO: ${item.armazem ? item.armazem + ' - ' + (item.cod_pn || '') : '-'}
                 </div>
@@ -310,6 +321,7 @@ export async function printRomaneioReport(ocId) {
               <tr class="pkg-row">
                 <td>${pkg.qrcode}</td>
                 <td class="numeric">${formatVol(pkg.quantidade)}</td>
+                <td class="numeric">${pkg.pecas || '-'}</td>
                 <td class="numeric">${formatPeso(pkg.peso)}</td>
                 <td class="center">${new Date(pkg.created_at).toLocaleString('pt-BR')}</td>
               </tr>
@@ -322,6 +334,7 @@ export async function printRomaneioReport(ocId) {
             <tr class="total-row">
               <td style="text-align: right; padding-right: 16px;">TOTAL GERAL (${totalPacotesGeral} PACOTES):</td>
               <td class="numeric">${formatVol(totalVolumeGeral)}</td>
+              <td class="numeric">${totalPecasGeral}</td>
               <td class="numeric">${formatPeso(totalPesoGeral)}</td>
               <td></td>
             </tr>
