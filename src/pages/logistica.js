@@ -523,6 +523,9 @@ async function saveCadastro(isEdit, editId) {
   }
   
   payload.filiais_permitidas = filiaisPermitidas;
+  if (!isEdit) {
+    payload.bplid = getBPLID();
+  }
   
   if (activeSubTab === 'empresas') {
     return; // Read-only from SAP
