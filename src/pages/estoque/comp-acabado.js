@@ -1,4 +1,5 @@
 import { supabase } from '../../config/supabase.js';
+import { openModal, closeModal } from '../../components/modal.js';
 
 let estoqueCompAcabado = [];
 let filteredEstoque = [];
@@ -176,20 +177,20 @@ export function renderEstoqueDashboard() {
       ${qualityCards || '<div style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">Nenhum dado encontrado para os filtros selecionados.</div>'}
     </div>
     
-    <!-- Grouped by Item (Table) -->
     <h3 style="font-size: var(--font-size-base); font-weight: var(--font-weight-semibold); color: var(--color-text); margin-bottom: var(--space-3); padding-bottom: var(--space-2); border-bottom: 1px solid var(--color-border-light);">Detalhamento por Item</h3>
     <div class="card" style="padding: 0; overflow: hidden; border-color: var(--color-border); background: var(--color-surface);">
       <div class="table-wrapper">
         <table class="table">
           <thead>
-            <tr>
+            <tr style="color: var(--color-text-secondary); border-bottom: 2px solid var(--color-border-light);">
               <th style="width: 40px; text-align: center;"><input type="checkbox" id="chk-select-all-estoque" style="cursor: pointer;" ${allVisibleSelected ? 'checked' : ''}></th>
-              <th style="font-size: var(--font-size-xs);">Cód. Item</th>
-              <th style="font-size: var(--font-size-xs);">Descrição</th>
-              <th style="font-size: var(--font-size-xs);">Local</th>
-              <th style="font-size: var(--font-size-xs);">Qualidade</th>
-              <th style="font-size: var(--font-size-xs); text-align: right;">Caixas</th>
+              <th style="font-size: var(--font-size-xs); text-align: left;">Cód. Item</th>
+              <th style="font-size: var(--font-size-xs); text-align: left;">Descrição</th>
+              <th style="font-size: var(--font-size-xs); text-align: left;">Local Estoque</th>
+              <th style="font-size: var(--font-size-xs); text-align: left;">Qualidade</th>
+              <th style="font-size: var(--font-size-xs); text-align: right;">Fardos</th>
               <th style="font-size: var(--font-size-xs); text-align: right;">Volume (m³)</th>
+              <th style="font-size: var(--font-size-xs); text-align: center; width: 60px;">Ações</th>
             </tr>
           </thead>
           <tbody style="font-size: var(--font-size-sm);">
@@ -227,11 +228,13 @@ function getGroupedItemsForTable() {
         qualidade: qual,
         local: local,
         fardos: 0,
-        m3: 0
+        m3: 0,
+        items: []
       };
     }
     acc[key].fardos++;
     acc[key].m3 += parseFloat(curr.total_calc) || 0;
+    acc[key].items.push(curr);
     return acc;
   }, {});
 
@@ -256,7 +259,7 @@ function renderEstoqueItemTable() {
   const rows = getGroupedItemsForTable();
 
   if (rows.length === 0) {
-    return `<tr><td colspan="7" style="text-align: center; padding: var(--space-8); color: var(--color-text-secondary);">Nenhum detalhe disponível.</td></tr>`;
+    return `<tr><td colspan="8" style="text-align: center; padding: var(--space-8); color: var(--color-text-secondary);">Nenhum detalhe disponível.</td></tr>`;
   }
 
   return rows.map((data) => {
@@ -277,6 +280,11 @@ function renderEstoqueItemTable() {
       <td style="padding: 6px 12px;"><span class="badge" style="${badgeStyle}">${qualDisplay}</span></td>
       <td style="padding: 6px 12px; text-align: right; font-weight: var(--font-weight-semibold);">${data.fardos}</td>
       <td style="padding: 6px 12px; text-align: right; color: var(--color-primary); font-weight: var(--font-weight-semibold);">${data.m3.toFixed(3).replace('.', ',')}</td>
+      <td style="padding: 6px 12px; text-align: center;">
+        <button class="btn-view-qrcodes" data-key="${data.key}" style="background: transparent; border: none; cursor: pointer; color: var(--color-text-secondary);" title="Ver QR Codes">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+        </button>
+      </td>
     </tr>
   `}).join('');
 }
@@ -332,7 +340,58 @@ export function bindEstoqueCompAcabadoEvents() {
       }
     });
     container.dataset.eventsBound = 'true';
+    
+    document.querySelectorAll('.btn-view-qrcodes').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const key = e.currentTarget.dataset.key;
+        const rows = getGroupedItemsForTable();
+        const groupData = rows.find(r => r.key === key);
+        if (groupData && groupData.items) {
+          showQRCodesModal(groupData);
+        }
+      });
+    });
   }
+}
+
+function showQRCodesModal(groupData) {
+  const trs = groupData.items.map(item => `
+    <tr>
+      <td style="font-family: monospace;">${item.qrcode}</td>
+      <td>${item.pi_numero || '-'}</td>
+      <td style="text-align: right;">${item.qtd_caixas}</td>
+      <td style="text-align: right; color: var(--color-primary); font-weight: 500;">${(parseFloat(item.total_calc) || 0).toFixed(3).replace('.', ',')} m³</td>
+      <td>${new Date(item.created_at).toLocaleString('pt-BR')}</td>
+    </tr>
+  `).join('');
+
+  const modalBody = `
+    <div style="margin-bottom: 16px;">
+      <p style="margin: 0; font-size: 0.9rem; color: var(--color-text-secondary);">Item: <strong style="color: var(--color-text);">${groupData.cod} - ${groupData.nome}</strong></p>
+      <p style="margin: 0; font-size: 0.9rem; color: var(--color-text-secondary);">Local: <strong style="color: var(--color-text);">${groupData.local}</strong> | Qualidade: <strong style="color: var(--color-text);">${groupData.qualidade}</strong></p>
+      <p style="margin: 0; font-size: 0.9rem; color: var(--color-text-secondary);">Total: <strong style="color: var(--color-text);">${groupData.fardos} fardos (${groupData.m3.toFixed(3).replace('.', ',')} m³)</strong></p>
+    </div>
+    <div class="table-container" style="max-height: 400px; overflow-y: auto;">
+      <table class="table">
+        <thead style="position: sticky; top: 0; background: white; z-index: 1;">
+          <tr>
+            <th>QR Code</th>
+            <th>PI</th>
+            <th style="text-align: right;">Caixas</th>
+            <th style="text-align: right;">Volume</th>
+            <th>Data de Criação</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${trs}
+        </tbody>
+      </table>
+    </div>
+    <div style="margin-top: 16px; display: flex; justify-content: flex-end;">
+      <button class="btn btn-secondary btn-sm" onclick="document.getElementById('modal-overlay').remove()">Fechar</button>
+    </div>
+  `;
+  openModal(`QR Codes do Item`, modalBody);
 }
 
 function printEstoqueReport() {
