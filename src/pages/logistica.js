@@ -579,4 +579,4 @@ async function saveCadastro(isEdit, editId) {
     btn.innerText = 'Salvar Registro';
   }
 }
-window.addEventListener('branch_changed', () => { dataCache.placas = []; dataCache.reboques = []; dataCache.motoristas = []; if (activeMainTab === 'cadastros') renderLogistica(); });
+window.addEventListener('branch_changed', () => { dataCache.placas = []; dataCache.reboques = []; dataCache.motoristas = []; });

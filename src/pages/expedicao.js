@@ -1291,8 +1291,4 @@ window.addEventListener('branch_changed', async () => {
   placasCache = [];
   reboquesCache = [];
   motoristasCache = [];
-  if (activeMainTab === 'ordem_carregamento') {
-    await fetchRemessas();
-    renderExpedicao();
-  }
 });
