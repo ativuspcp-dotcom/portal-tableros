@@ -357,10 +357,9 @@ export function bindEstoqueCompAcabadoEvents() {
 
 function showQRCodesModal(groupData) {
   const trs = groupData.items.map(item => `
-    <tr>
+    <tr class="qrcode-row" data-qrcode="${item.qrcode.toLowerCase()}">
       <td style="font-family: monospace;">${item.qrcode}</td>
       <td>${item.pi_numero || '-'}</td>
-      <td style="text-align: right;">${item.qtd_caixas}</td>
       <td style="text-align: right; color: var(--color-primary); font-weight: 500;">${(parseFloat(item.total_calc) || 0).toFixed(3).replace('.', ',')} m³</td>
       <td>${new Date(item.created_at).toLocaleString('pt-BR')}</td>
     </tr>
@@ -372,18 +371,22 @@ function showQRCodesModal(groupData) {
       <p style="margin: 0; font-size: 0.9rem; color: var(--color-text-secondary);">Local: <strong style="color: var(--color-text);">${groupData.local}</strong> | Qualidade: <strong style="color: var(--color-text);">${groupData.qualidade}</strong></p>
       <p style="margin: 0; font-size: 0.9rem; color: var(--color-text-secondary);">Total: <strong style="color: var(--color-text);">${groupData.fardos} fardos (${groupData.m3.toFixed(3).replace('.', ',')} m³)</strong></p>
     </div>
+    
+    <div style="margin-bottom: 16px;">
+      <input type="text" id="modal-qrcode-search" class="form-input" placeholder="Pesquisar QR Code..." style="width: 100%;">
+    </div>
+
     <div class="table-container" style="max-height: 400px; overflow-y: auto;">
       <table class="table">
         <thead style="position: sticky; top: 0; background: white; z-index: 1;">
           <tr>
             <th>QR Code</th>
             <th>PI</th>
-            <th style="text-align: right;">Caixas</th>
             <th style="text-align: right;">Volume</th>
             <th>Data de Criação</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody id="modal-qrcode-tbody">
           ${trs}
         </tbody>
       </table>
@@ -393,6 +396,21 @@ function showQRCodesModal(groupData) {
     </div>
   `;
   openModal(`QR Codes do Item`, modalBody);
+
+  const searchInput = document.getElementById('modal-qrcode-search');
+  if (searchInput) {
+    searchInput.addEventListener('input', (e) => {
+      const val = e.target.value.toLowerCase().trim();
+      const rows = document.querySelectorAll('#modal-qrcode-tbody .qrcode-row');
+      rows.forEach(row => {
+        if (!val || row.dataset.qrcode.includes(val)) {
+          row.style.display = '';
+        } else {
+          row.style.display = 'none';
+        }
+      });
+    });
+  }
 }
 
 function printEstoqueReport() {
