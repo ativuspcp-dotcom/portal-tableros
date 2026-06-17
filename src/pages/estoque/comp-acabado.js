@@ -392,7 +392,7 @@ function showQRCodesModal(groupData) {
       </table>
     </div>
     <div style="margin-top: 16px; display: flex; justify-content: flex-end;">
-      <button class="btn btn-secondary btn-sm" onclick="document.getElementById('modal-overlay').remove()">Fechar</button>
+      <button class="btn btn-secondary btn-sm" onclick="document.getElementById('modal-close-btn').click()">Fechar</button>
     </div>
   `;
   openModal(`QR Codes do Item`, modalBody);
