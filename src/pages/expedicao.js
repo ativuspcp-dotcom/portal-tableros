@@ -1243,11 +1243,18 @@ async function saveRemessa(isEdit, editId) {
       const { error: delError } = await delQuery;
       if (delError) throw delError;
       
-      const { error: itemsError } = await supabase
-        .from('expedicao_ordens_carregamento_itens')
-        .upsert(itemsData);
+      const itemsToUpdate = itemsData.filter(i => i.id);
+      const itemsToInsert = itemsData.filter(i => !i.id);
         
-      if (itemsError) throw itemsError;
+      if (itemsToUpdate.length > 0) {
+        const { error: updError } = await supabase.from('expedicao_ordens_carregamento_itens').upsert(itemsToUpdate);
+        if (updError) throw updError;
+      }
+        
+      if (itemsToInsert.length > 0) {
+        const { error: insError } = await supabase.from('expedicao_ordens_carregamento_itens').insert(itemsToInsert);
+        if (insError) throw insError;
+      }
       
       showToast(`Ordem atualizada com sucesso!`, 'success');
     } else {
