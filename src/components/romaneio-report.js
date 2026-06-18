@@ -50,7 +50,12 @@ export async function printRomaneioReport(ocId) {
     
     let destinoRemessa = '-';
     if (!isTransfer && ocItems && ocItems.length > 0) {
-      const destinosUnicos = [...new Set(ocItems.filter(i => i.armazem).map(i => `${i.armazem} - ${i.cod_pn || ''}`))];
+      const destinosUnicos = [...new Set(ocItems.map(i => {
+        if (i.pn_nome) return i.pn_nome;
+        if (i.armazem) return `${i.armazem} - ${i.cod_pn || ''}`;
+        if (i.cod_pn) return i.cod_pn;
+        return null;
+      }).filter(Boolean))];
       if (destinosUnicos.length > 0) {
         destinoRemessa = destinosUnicos.join(' / ');
       }
@@ -310,7 +315,7 @@ export async function printRomaneioReport(ocId) {
                   CARREGADO: ${formatVol(actualVol)} &nbsp;|&nbsp; 
                   TOTAL DE PEÇAS: ${actualPecas} &nbsp;|&nbsp;
                   TOTAL DE PACOTES: ${pkgsForThisItem.length} &nbsp;|&nbsp;
-                  DESTINO: ${item.armazem ? item.armazem + ' - ' + (item.cod_pn || '') : '-'}
+                  DESTINO: ${item.pn_nome ? item.pn_nome : (item.armazem ? item.armazem + ' - ' + (item.cod_pn || '') : (item.cod_pn || '-'))}
                 </div>
               </td>
             </tr>

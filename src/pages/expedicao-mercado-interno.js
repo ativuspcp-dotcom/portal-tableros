@@ -648,6 +648,7 @@ async function saveMercadoInterno(isEdit, editId) {
     const lineNum = selectedOption.dataset.linenum;
     const bplId = selectedOption.dataset.bplid;
     const codPn = tr.querySelector('.mi-cod-pn').value;
+    const destino = tr.querySelector('.mi-destino').value;
     
     const tipo = tr.querySelector('.mi-tipo-select').value;
     const qtdProg = tr.querySelector('.mi-qtd-prog').value;
@@ -661,6 +662,7 @@ async function saveMercadoInterno(isEdit, editId) {
     const newItem = {
       pedido_numero: pedidoNumero,
       cod_pn: codPn,
+      pn_nome: destino,
       item_code: realCode,
       item_name: itemName,
       line_num: lineNum ? parseInt(lineNum) : null,
