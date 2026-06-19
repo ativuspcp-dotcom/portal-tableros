@@ -421,6 +421,7 @@ async function initMercadoInternoForm(isEdit, mi) {
       mi.expedicao_ordens_carregamento_itens.forEach(item => {
         const tr = addMercadoInternoItemRow();
         tr.querySelector('.mi-item-db-id').value = item.id;
+        tr.querySelector('.mi-faturar-sap').checked = item.faturar_sap !== false;
         
         const selectPedido = tr.querySelector('.mi-pedido-select');
         selectPedido.value = item.pedido_numero;
@@ -508,9 +509,13 @@ function addMercadoInternoItemRow() {
       </div>
     </td>
     <td style="text-align: center; vertical-align: middle;">
-      <button type="button" class="btn btn-sm btn-icon btn-remove-row" style="color: var(--color-danger);">
+      <button type="button" class="btn btn-sm btn-icon btn-remove-row" style="color: var(--color-danger); margin-bottom: 8px;">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
       </button>
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 2px;">
+        <input type="checkbox" class="mi-faturar-sap" checked title="Faturar no SAP" style="cursor: pointer;" />
+        <span style="font-size: 9px; color: var(--color-text-secondary);">SAP</span>
+      </div>
     </td>
   `;
   
@@ -653,6 +658,7 @@ async function saveMercadoInterno(isEdit, editId) {
     const tipo = tr.querySelector('.mi-tipo-select').value;
     const qtdProg = tr.querySelector('.mi-qtd-prog').value;
     const dbId = tr.querySelector('.mi-item-db-id').value;
+    const faturarSap = tr.querySelector('.mi-faturar-sap').checked;
     
     if (tipo === 'Obrigatório' && !qtdProg) {
       showToast('A Quantidade é obrigatória nos itens do tipo Obrigatório.', 'error');
@@ -668,6 +674,7 @@ async function saveMercadoInterno(isEdit, editId) {
       line_num: lineNum ? parseInt(lineNum) : null,
       bplid: bplId ? parseInt(bplId) : null,
       tipo: tipo,
+      faturar_sap: faturarSap,
       quantidade_programada: tipo === 'Obrigatório' ? (parseFloat(qtdProg.replace(',', '.')) || 0) : null
     };
     if (dbId) newItem.id = dbId;
