@@ -575,8 +575,18 @@ async function saveTransferencia(isEdit, editId) {
         const { error: delError } = await delQuery;
         if (delError) throw delError;
         
-        const { error: insError } = await supabase.from('expedicao_ordens_carregamento_itens').upsert(itensPayload);
-        if (insError) throw insError;
+        const itemsToUpdate = itensPayload.filter(i => i.id);
+        const itemsToInsert = itensPayload.filter(i => !i.id);
+        
+        if (itemsToUpdate.length > 0) {
+          const { error: updError } = await supabase.from('expedicao_ordens_carregamento_itens').upsert(itemsToUpdate);
+          if (updError) throw updError;
+        }
+        
+        if (itemsToInsert.length > 0) {
+          const { error: insError } = await supabase.from('expedicao_ordens_carregamento_itens').insert(itemsToInsert);
+          if (insError) throw insError;
+        }
       } else {
         // If all items removed
         const { error: delError } = await supabase.from('expedicao_ordens_carregamento_itens').delete().eq('ordem_id', editId);
