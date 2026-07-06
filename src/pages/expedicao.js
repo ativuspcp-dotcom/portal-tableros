@@ -524,7 +524,13 @@ export async function fetchLogisticaData() {
         const bps = data.value || [];
         const grouped = {};
         for (const bp of bps) {
-          const cnpj = bp.BPFiscalTaxIDCollection?.[0]?.TaxId0;
+          let cnpj = null;
+          if (bp.BPFiscalTaxIDCollection) {
+            for (const tax of bp.BPFiscalTaxIDCollection) {
+              if (tax.TaxId0) { cnpj = tax.TaxId0; break; }
+              if (tax.TaxId4) { cnpj = tax.TaxId4; break; }
+            }
+          }
           if (!cnpj) continue;
           if (!grouped[cnpj]) {
             grouped[cnpj] = { cnpj, nome_fantasia: bp.CardName, card_code: bp.CardCode };
