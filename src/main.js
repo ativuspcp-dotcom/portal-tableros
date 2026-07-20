@@ -12,6 +12,7 @@ import { renderLogistica } from './pages/logistica.js';
 import { renderExpedicao } from './pages/expedicao.js';
 import { renderPCP } from './pages/pcp.js';
 import { renderApontadores } from './pages/apontadores.js';
+import { renderSeguranca } from './pages/seguranca.js';
 
 console.log('Portal Tableros: Main entry loaded.');
 
@@ -24,6 +25,7 @@ route('/logistica', renderLogistica);
 route('/expedicao', renderExpedicao);
 route('/pcp', renderPCP);
 route('/apontadores', renderApontadores);
+route('/seguranca', renderSeguranca);
 
 // Set navigation guards
 setBeforeNavigate(async (path) => {
@@ -83,6 +85,13 @@ setBeforeNavigate(async (path) => {
 
   if (path === '/pcp') {
     if (!hasModuleAccess('pcp', 'can_view')) {
+      navigate('/dashboard');
+      return false;
+    }
+  }
+
+  if (path === '/seguranca') {
+    if (!hasModuleAccess('seguranca', 'can_view')) {
       navigate('/dashboard');
       return false;
     }

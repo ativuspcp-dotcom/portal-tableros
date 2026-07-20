@@ -76,6 +76,15 @@ export function renderSidebar() {
     `);
   }
 
+  if (hasModuleAccess('seguranca', 'can_view')) {
+    moduleItems.push(`
+      <div class="sidebar-item ${getCurrentRoute() === '/seguranca' ? 'active' : ''}" data-route="/seguranca">
+        <span class="icon">${getModuleIcon('seguranca')}</span>
+        <span>Segurança</span>
+      </div>
+    `);
+  }
+
   if (moduleItems.length > 0) {
     menuItems += `
       <div class="sidebar-section-label">Módulos</div>

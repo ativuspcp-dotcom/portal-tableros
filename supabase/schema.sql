@@ -180,10 +180,11 @@ CREATE POLICY "Allow authenticated users to write activity log"
 -- ── 7. Seed Initial Data ─────────────────────────────────
 
 -- Insert modules
-INSERT INTO public.modules (name, slug, description, icon, sort_order)
-VALUES 
-  ('Administração', 'admin', 'Gestão de usuários, permissões e configurações', '⚙️', 1),
-  ('Transportes', 'transportes', 'Gestão de transportes e logística', '🚚', 2),
-  ('Expedição', 'expedicao', 'Controle de expedição e despacho', '📦', 3)
+INSERT INTO public.modules (name, slug, description, icon, type, sort_order)
+VALUES
+  ('Administração', 'admin', 'Gestão de usuários, permissões e configurações', '⚙️', 'portal', 1),
+  ('Transportes', 'transportes', 'Gestão de transportes e logística', '🚚', 'portal', 2),
+  ('Expedição', 'expedicao', 'Controle de expedição e despacho', '📦', 'portal', 3),
+  ('Segurança', 'seguranca', 'Gestão de segurança do trabalho e EPIs', '🦺', 'portal', 5)
 ON CONFLICT (slug) DO UPDATE
 SET name = EXCLUDED.name, description = EXCLUDED.description, icon = EXCLUDED.icon;

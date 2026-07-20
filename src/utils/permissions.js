@@ -136,6 +136,10 @@ export function getModuleIcon(slug) {
   if (slug === 'pcp') {
     return `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sidebar-icon"><path d="M2 20h20"></path><path d="M5 17V7l7 5V7l7 5v5H5z"></path></svg>`;
   }
+
+  if (slug === 'seguranca') {
+    return `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sidebar-icon"><path d="M12 2l8 3v6c0 5-3.5 8.5-8 11-4.5-2.5-8-6-8-11V5l8-3z"></path></svg>`;
+  }
   
   // Sleek geometric diamond shape fallback
   return `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sidebar-icon"><path d="M12 2L2 12l10 10 10-10L12 2z"></path></svg>`;
