@@ -1,4 +1,4 @@
-import { getCachedSession, updatePassword, logActivity } from '../auth/auth.js';
+import { getCachedSession, updatePassword } from '../auth/auth.js';
 import { renderSidebar, bindSidebarEvents } from '../components/sidebar.js';
 import { renderHeader } from '../components/header.js';
 import { showToast } from '../components/toast.js';
@@ -137,7 +137,6 @@ async function handlePasswordUpdate(e) {
 
   try {
     await updatePassword(newPassword);
-    await logActivity('alterou a própria senha', 'profile');
     showToast('Senha atualizada com sucesso!', 'success');
     document.getElementById('password-form').reset();
   } catch (error) {

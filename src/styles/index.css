@@ -58,6 +58,7 @@
   --module-logistica: #0ea5e9;
   --module-expedicao: #f97316;
   --module-pcp: #10b981;
+  --module-seguranca: #ef4444;
 
   /* Typography */
   --font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -1258,6 +1259,7 @@ input, select, textarea {
 .module-card.expedicao::before { background: var(--module-expedicao); }
 .module-card.admin::before { background: var(--module-admin); }
 .module-card.pcp::before { background: var(--module-pcp); }
+.module-card.seguranca::before { background: var(--module-seguranca); }
 
 .module-card:hover {
   transform: translateY(-4px);
@@ -1293,6 +1295,11 @@ input, select, textarea {
 .module-card.pcp .module-card-icon {
   background: #ecfdf5;
   color: var(--module-pcp);
+}
+
+.module-card.seguranca .module-card-icon {
+  background: #fef2f2;
+  color: var(--module-seguranca);
 }
 
 .module-card-title {

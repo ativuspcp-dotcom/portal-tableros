@@ -1,6 +1,6 @@
 import {
   getAllUsers, getModules, createUser, updateUserProfile,
-  updateUserPermissions, deleteUser, logActivity, getCachedSession
+  updateUserPermissions, deleteUser, getCachedSession
 } from '../auth/auth.js';
 import { renderSidebar, bindSidebarEvents } from '../components/sidebar.js';
 import { renderHeader } from '../components/header.js';
@@ -483,7 +483,6 @@ async function handleSaveUser(existingUser) {
       // Update permissions
       await updateUserPermissions(existingUser.id, modulePermissions);
 
-      await logActivity('atualizou o usuário', 'admin', { user_name: fullName });
       showToast('Usuário atualizado com sucesso!', 'success');
     } else {
       // Create user via Edge Function
@@ -498,7 +497,6 @@ async function handleSaveUser(existingUser) {
         module_permissions: modulePermissions,
       });
 
-      await logActivity('criou novo usuário', 'admin', { user_name: fullName, email });
       showToast('Usuário criado com sucesso!', 'success');
     }
 
@@ -529,7 +527,6 @@ async function toggleUserStatus(userId, action) {
     async () => {
       try {
         await updateUserProfile(userId, { status: newStatus });
-        await logActivity(`${actionLabel === 'ativar' ? 'ativou' : 'desativou'} o usuário`, 'admin', { user_name: user.full_name });
         showToast(`Usuário ${actionLabel === 'ativar' ? 'ativado' : 'desativado'}!`, 'success');
 
         allUsers = await getAllUsers();
@@ -553,7 +550,6 @@ async function handleDeleteUser(userId) {
     async () => {
       try {
         await deleteUser(userId);
-        await logActivity('excluiu o usuário', 'admin', { user_name: user.full_name, email: user.email });
         showToast('Usuário excluído com sucesso', 'success');
 
         allUsers = await getAllUsers();

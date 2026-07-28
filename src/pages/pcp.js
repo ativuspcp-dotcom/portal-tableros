@@ -1,5 +1,4 @@
 import { supabase } from '../config/supabase.js';
-import { logActivity, getCachedSession } from '../auth/auth.js';
 import { renderSidebar, bindSidebarEvents } from '../components/sidebar.js';
 import { renderHeader } from '../components/header.js';
 import { openModal, closeModal, confirmDialog } from '../components/modal.js';
@@ -686,7 +685,6 @@ async function handleDeleteItem(id) {
 
     if (error) throw error;
 
-    await logActivity('Excluiu Lâmina Verde', 'pcp', { id });
     showToast(`Registro ${id} excluído.`, 'success');
     await fetchGreenVeneerItems();
   } catch (error) {
@@ -1087,7 +1085,6 @@ async function handleFormSubmit(e) {
 
       if (error) throw error;
 
-      await logActivity('Editou Lâmina Verde', 'pcp', { id });
       showToast(`Lâmina Verde ${id} atualizada.`, 'success');
     } else {
       const { data: existing } = await supabase
@@ -1110,7 +1107,6 @@ async function handleFormSubmit(e) {
 
       if (error) throw error;
 
-      await logActivity('Cadastrou Lâmina Verde', 'pcp', { id });
       showToast(`Lâmina Verde ${id} cadastrada.`, 'success');
     }
 

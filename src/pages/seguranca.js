@@ -2,7 +2,7 @@ import { renderSidebar, bindSidebarEvents } from '../components/sidebar.js';
 import { renderHeader } from '../components/header.js';
 import { hasModuleAccess } from '../utils/permissions.js';
 import { supabase } from '../config/supabase.js';
-import { getCachedSession, logActivity, getBPLID } from '../auth/auth.js';
+import { getCachedSession, getBPLID } from '../auth/auth.js';
 import { showToast } from '../components/toast.js';
 import { openModal, closeModal, confirmDialog } from '../components/modal.js';
 import { printFichaEntregaEPI } from '../components/ficha-entrega-epi-report.js';
@@ -617,7 +617,6 @@ async function saveEntrega(funcionariosAtivos, estoqueMap) {
     if (itensError) throw itensError;
 
     estoqueInternoCache = null; // invalida pra refletir o saldo novo na aba Estoque
-    await logActivity('Registrou Entrega de EPI', 'seguranca', { funcionario_id: funcionarioId, sap_doc_num: sapDocNum });
 
     closeModal();
     showToast('Entrega registrada com sucesso!', 'success');

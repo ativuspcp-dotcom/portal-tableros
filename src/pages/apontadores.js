@@ -1,5 +1,4 @@
 import { supabase } from '../config/supabase.js';
-import { logActivity } from '../auth/auth.js';
 import { renderSidebar, bindSidebarEvents } from '../components/sidebar.js';
 import { renderHeader } from '../components/header.js';
 import { openModal, closeModal, confirmDialog } from '../components/modal.js';

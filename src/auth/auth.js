@@ -255,36 +255,6 @@ export async function getModules() {
 }
 
 /**
- * Log activity
- */
-export async function logActivity(action, module, details) {
-  const session = getCachedSession();
-  await supabase.from('activity_log').insert({
-    user_id: session.user?.id || session.profile?.id,
-    action,
-    module,
-    details
-  });
-}
-
-/**
- * Get recent activity (admin)
- */
-export async function getRecentActivity(limit = 10) {
-  const { data, error } = await supabase
-    .from('activity_log')
-    .select(`
-      *,
-      user_profiles:user_id (full_name, email)
-    `)
-    .order('created_at', { ascending: false })
-    .limit(limit);
-
-  if (error) throw error;
-  return data || [];
-}
-
-/**
  * Delete user (super_admin only)
  */
 export async function deleteUser(userId) {
