@@ -23,6 +23,12 @@ let estoqueInternoCache = null;
 let estoqueCdCache = null;
 let funcionariosCache = [];
 
+let funcSearchFilter = '';
+let funcSetorFilter = '';
+let funcTurnoFilter = '';
+let funcFuncaoFilter = '';
+let funcStatusFilter = '';
+
 /**
  * Render Segurança (EPIs) page
  */
@@ -126,10 +132,8 @@ function renderFuncionariosTab() {
         </button>
       </div>
     </div>
-    <div class="card" style="padding: 0; overflow: hidden;">
-      <div class="table-wrapper" id="seguranca-funcionarios-wrapper">
-        <div style="padding: var(--space-8); text-align: center; color: var(--color-text-secondary);">Carregando funcionários...</div>
-      </div>
+    <div id="seguranca-funcionarios-container">
+      <div style="padding: var(--space-8); text-align: center; color: var(--color-text-secondary);">Carregando funcionários...</div>
     </div>
   `;
 }
@@ -301,73 +305,210 @@ async function loadEstoqueTab(warehouseCode) {
 }
 
 async function loadFuncionariosTab() {
-  const wrapper = document.getElementById('seguranca-funcionarios-wrapper');
-  if (!wrapper) return;
-
-  const canEdit = hasModuleAccess('seguranca', 'can_edit');
+  const container = document.getElementById('seguranca-funcionarios-container');
+  if (!container) return;
 
   const { data, error } = await supabase.from('seguranca_funcionarios').select('*').order('nome');
   if (error) {
     console.error('Erro ao buscar funcionários', error);
-    wrapper.innerHTML = `<div class="empty-state"><div class="empty-state-title">Erro ao carregar funcionários</div></div>`;
+    container.innerHTML = `<div class="empty-state"><div class="empty-state-title">Erro ao carregar funcionários</div></div>`;
     return;
   }
 
   funcionariosCache = data || [];
+  renderFuncionariosContent();
+}
+
+// Valores distintos já usados em `field` nos funcionários cadastrados, para alimentar dropdowns (modal e filtros)
+function distinctFuncionarioValues(field) {
+  return [...new Set(funcionariosCache.map((f) => f[field]).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+}
+
+function getFilteredFuncionarios() {
+  const search = funcSearchFilter.toLowerCase().trim();
+  return funcionariosCache.filter((f) => {
+    const matchSearch = !search || f.codigo.toLowerCase().includes(search) || f.nome.toLowerCase().includes(search);
+    const matchSetor = !funcSetorFilter || f.setor === funcSetorFilter;
+    const matchTurno = !funcTurnoFilter || f.turno === funcTurnoFilter;
+    const matchFuncao = !funcFuncaoFilter || f.funcao === funcFuncaoFilter;
+    const matchStatus = !funcStatusFilter || f.status === funcStatusFilter;
+    return matchSearch && matchSetor && matchTurno && matchFuncao && matchStatus;
+  });
+}
+
+function applyFuncionarioFilters() {
+  funcSearchFilter = document.getElementById('func-search')?.value ?? funcSearchFilter;
+  funcSetorFilter = document.getElementById('func-filter-setor')?.value ?? funcSetorFilter;
+  funcTurnoFilter = document.getElementById('func-filter-turno')?.value ?? funcTurnoFilter;
+  funcFuncaoFilter = document.getElementById('func-filter-funcao')?.value ?? funcFuncaoFilter;
+  funcStatusFilter = document.getElementById('func-filter-status')?.value ?? funcStatusFilter;
+  renderFuncionariosContent();
+}
+
+function renderFuncionariosContent() {
+  const container = document.getElementById('seguranca-funcionarios-container');
+  if (!container) return;
+
+  const canEdit = hasModuleAccess('seguranca', 'can_edit');
+  const filtrados = getFilteredFuncionarios();
+
+  const searchInputActive = document.activeElement?.id === 'func-search';
+  const cursorPos = searchInputActive ? document.activeElement.selectionStart : null;
 
   if (funcionariosCache.length === 0) {
-    wrapper.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-state-title">Nenhum funcionário cadastrado</div>
-        <div class="empty-state-desc">Cadastre o primeiro funcionário pra começar a registrar entregas de EPI.</div>
+    container.innerHTML = `
+      <div class="card" style="padding: 0; overflow: hidden;">
+        <div class="empty-state">
+          <div class="empty-state-title">Nenhum funcionário cadastrado</div>
+          <div class="empty-state-desc">Cadastre o primeiro funcionário pra começar a registrar entregas de EPI.</div>
+        </div>
       </div>
     `;
     return;
   }
 
-  wrapper.innerHTML = `
-    <table class="table">
-      <thead>
-        <tr>
-          <th>Código</th>
-          <th>Nome</th>
-          <th>Status</th>
-          <th style="width: 180px;"></th>
-        </tr>
-      </thead>
-      <tbody>
-        ${funcionariosCache
-          .map(
-            (f) => `
-          <tr>
-            <td style="font-family:monospace;">${f.codigo}</td>
-            <td>${f.nome}</td>
-            <td><span class="badge badge-${f.status === 'ativo' ? 'green' : 'gray'}">${f.status === 'ativo' ? 'Ativo' : 'Inativo'}</span></td>
-            <td style="text-align:right; white-space:nowrap;">
-              <button class="btn btn-secondary btn-sm btn-ficha-funcionario" data-id="${f.id}">Ficha</button>
-              ${canEdit ? `<button class="btn btn-secondary btn-sm btn-editar-funcionario" data-id="${f.id}">Editar</button>` : ''}
-            </td>
-          </tr>
-        `
-          )
-          .join('')}
-      </tbody>
-    </table>
+  container.innerHTML = `
+    <div class="toolbar" style="margin-bottom: var(--space-4); display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center;">
+      <div class="toolbar-left" style="display: flex; flex-wrap: wrap; gap: var(--space-2); flex: 1;">
+        <div style="position: relative; width: 240px; max-width: 100%;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--color-text-secondary);"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <input type="text" id="func-search" class="form-input" placeholder="Buscar por código ou nome..." value="${funcSearchFilter.replace(/"/g, '&quot;')}" style="padding-left: 32px; font-size: var(--font-size-sm); height: 34px; width: 100%;">
+        </div>
+        <select class="filter-select" id="func-filter-setor" style="font-size: var(--font-size-sm); height: 34px;">
+          <option value="">Todos os Setores</option>
+          ${distinctFuncionarioValues('setor').map((s) => `<option value="${s}" ${funcSetorFilter === s ? 'selected' : ''}>${s}</option>`).join('')}
+        </select>
+        <select class="filter-select" id="func-filter-turno" style="font-size: var(--font-size-sm); height: 34px;">
+          <option value="">Todos os Turnos</option>
+          ${distinctFuncionarioValues('turno').map((t) => `<option value="${t}" ${funcTurnoFilter === t ? 'selected' : ''}>${t}</option>`).join('')}
+        </select>
+        <select class="filter-select" id="func-filter-funcao" style="font-size: var(--font-size-sm); height: 34px;">
+          <option value="">Todas as Funções</option>
+          ${distinctFuncionarioValues('funcao').map((f) => `<option value="${f}" ${funcFuncaoFilter === f ? 'selected' : ''}>${f}</option>`).join('')}
+        </select>
+        <select class="filter-select" id="func-filter-status" style="font-size: var(--font-size-sm); height: 34px;">
+          <option value="">Ativos e Inativos</option>
+          <option value="ativo" ${funcStatusFilter === 'ativo' ? 'selected' : ''}>Somente Ativos</option>
+          <option value="inativo" ${funcStatusFilter === 'inativo' ? 'selected' : ''}>Somente Inativos</option>
+        </select>
+      </div>
+    </div>
+    <div class="card" style="padding: 0; overflow: hidden;">
+      <div class="table-wrapper">
+        ${filtrados.length === 0 ? `
+          <div class="empty-state">
+            <div class="empty-state-title">Nenhum funcionário encontrado</div>
+            <div class="empty-state-desc">Ajuste os filtros pra ver outros resultados.</div>
+          </div>
+        ` : `
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Código</th>
+              <th>Nome</th>
+              <th>Setor</th>
+              <th>Turno</th>
+              <th>Função</th>
+              <th>Status</th>
+              <th style="width: 180px;"></th>
+            </tr>
+          </thead>
+          <tbody>
+            ${filtrados
+              .map(
+                (f) => `
+              <tr>
+                <td style="font-family:monospace;">${f.codigo}</td>
+                <td>${f.nome}</td>
+                <td>${f.setor || '-'}</td>
+                <td>${f.turno || '-'}</td>
+                <td>${f.funcao || '-'}</td>
+                <td><span class="badge badge-${f.status === 'ativo' ? 'green' : 'gray'}">${f.status === 'ativo' ? 'Ativo' : 'Inativo'}</span></td>
+                <td style="text-align:right; white-space:nowrap;">
+                  <button class="btn btn-secondary btn-sm btn-ficha-funcionario" data-id="${f.id}">Ficha</button>
+                  ${canEdit ? `<button class="btn btn-secondary btn-sm btn-editar-funcionario" data-id="${f.id}">Editar</button>` : ''}
+                </td>
+              </tr>
+            `
+              )
+              .join('')}
+          </tbody>
+        </table>
+        `}
+      </div>
+    </div>
   `;
 
-  wrapper.querySelectorAll('.btn-ficha-funcionario').forEach((btn) => {
+  if (searchInputActive) {
+    const searchInput = document.getElementById('func-search');
+    searchInput.focus();
+    searchInput.setSelectionRange(cursorPos, cursorPos);
+  }
+
+  bindFuncionariosContentEvents();
+}
+
+function bindFuncionariosContentEvents() {
+  document.getElementById('func-search')?.addEventListener('input', applyFuncionarioFilters);
+  document.getElementById('func-filter-setor')?.addEventListener('change', applyFuncionarioFilters);
+  document.getElementById('func-filter-turno')?.addEventListener('change', applyFuncionarioFilters);
+  document.getElementById('func-filter-funcao')?.addEventListener('change', applyFuncionarioFilters);
+  document.getElementById('func-filter-status')?.addEventListener('change', applyFuncionarioFilters);
+
+  document.querySelectorAll('.btn-ficha-funcionario').forEach((btn) => {
     btn.addEventListener('click', () => {
       const f = funcionariosCache.find((x) => x.id === btn.dataset.id);
       if (f) showFichaFuncionarioModal(f);
     });
   });
 
-  wrapper.querySelectorAll('.btn-editar-funcionario').forEach((btn) => {
+  document.querySelectorAll('.btn-editar-funcionario').forEach((btn) => {
     btn.addEventListener('click', () => {
       const f = funcionariosCache.find((x) => x.id === btn.dataset.id);
       if (f) showFuncionarioModal(f);
     });
   });
+}
+
+// Combo com opção "+ Nova opção..." que revela um input de texto (sempre maiúsculo) pra cadastrar um valor novo na hora
+function comboFieldHTML(prefix, label, options, currentValue) {
+  return `
+    <div class="form-group">
+      <label class="form-label">${label} <span class="required">*</span></label>
+      <select class="form-select" id="func-${prefix}" required>
+        <option value="">Selecione...</option>
+        ${options.map((o) => `<option value="${o}" ${o === currentValue ? 'selected' : ''}>${o}</option>`).join('')}
+        <option value="__novo__">+ Nova opção...</option>
+      </select>
+      <input type="text" class="form-input" id="func-${prefix}-novo" placeholder="Digite o novo valor" style="margin-top:8px; display:none; text-transform:uppercase;">
+    </div>
+  `;
+}
+
+function bindComboField(prefix) {
+  const select = document.getElementById(`func-${prefix}`);
+  const novoInput = document.getElementById(`func-${prefix}-novo`);
+
+  select.addEventListener('change', () => {
+    const isNovo = select.value === '__novo__';
+    novoInput.style.display = isNovo ? 'block' : 'none';
+    novoInput.required = isNovo;
+    if (isNovo) novoInput.focus();
+  });
+
+  novoInput.addEventListener('input', () => {
+    const pos = novoInput.selectionStart;
+    novoInput.value = novoInput.value.toUpperCase();
+    novoInput.setSelectionRange(pos, pos);
+  });
+}
+
+function getComboValue(prefix) {
+  const select = document.getElementById(`func-${prefix}`);
+  if (select.value === '__novo__') {
+    return document.getElementById(`func-${prefix}-novo`).value.trim().toUpperCase();
+  }
+  return select.value;
 }
 
 function showFuncionarioModal(existing = null) {
@@ -383,6 +524,9 @@ function showFuncionarioModal(existing = null) {
         <label class="form-label">Nome <span class="required">*</span></label>
         <input type="text" class="form-input" id="func-nome" value="${existing?.nome || ''}" required>
       </div>
+      ${comboFieldHTML('setor', 'Setor', distinctFuncionarioValues('setor'), existing?.setor || '')}
+      ${comboFieldHTML('turno', 'Turno', distinctFuncionarioValues('turno'), existing?.turno || '')}
+      ${comboFieldHTML('funcao', 'Função', distinctFuncionarioValues('funcao'), existing?.funcao || '')}
       <div class="form-group">
         <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
           <input type="checkbox" id="func-status" ${!isEdit || existing?.status === 'ativo' ? 'checked' : ''} style="width: 16px; height: 16px; accent-color: var(--color-primary);" />
@@ -399,6 +543,9 @@ function showFuncionarioModal(existing = null) {
   openModal(isEdit ? 'Editar Funcionário' : 'Novo Funcionário', bodyHTML);
 
   document.getElementById('btn-cancel-funcionario').addEventListener('click', closeModal);
+  bindComboField('setor');
+  bindComboField('turno');
+  bindComboField('funcao');
 
   document.getElementById('funcionario-form').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -415,11 +562,14 @@ async function saveFuncionario(editId) {
   const payload = {
     codigo: document.getElementById('func-codigo').value.trim(),
     nome: document.getElementById('func-nome').value.trim(),
+    setor: getComboValue('setor'),
+    turno: getComboValue('turno'),
+    funcao: getComboValue('funcao'),
     status: document.getElementById('func-status').checked ? 'ativo' : 'inativo',
   };
 
-  if (!payload.codigo || !payload.nome) {
-    showToast('Preencha código e nome.', 'error');
+  if (!payload.codigo || !payload.nome || !payload.setor || !payload.turno || !payload.funcao) {
+    showToast('Preencha todos os campos obrigatórios.', 'error');
     btn.disabled = false;
     btn.innerText = originalText;
     return;
