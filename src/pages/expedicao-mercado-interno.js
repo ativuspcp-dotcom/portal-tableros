@@ -2,7 +2,7 @@ import { getBPLID } from '../auth/auth.js';
 import { supabase } from '../config/supabase.js';
 import { showToast } from '../components/toast.js';
 import { confirmDialog } from '../components/modal.js';
-import { fetchRemessas, fetchLogisticaData, mercadoInternoCache, getMercadoInternoStatusFilter, setMercadoInternoStatusFilter, renderExpedicao, empresasCache, motoristasCache, placasCache } from './expedicao.js';
+import { fetchRemessas, refilterOrdens, fetchLogisticaData, mercadoInternoCache, getMercadoInternoStatusFilter, setMercadoInternoStatusFilter, renderExpedicao, empresasCache, motoristasCache, placasCache } from './expedicao.js';
 import { printRomaneioReport } from '../components/romaneio-report.js';
 
 let expedicaoItemsCache = [];
@@ -184,9 +184,9 @@ export function renderMercadoInternoTab(canCreate, canEdit, canDelete) {
 export function bindMercadoInternoEvents() {
   const filterMI = document.getElementById('mi-status-filter');
   if (filterMI) {
-    filterMI.addEventListener('change', async (e) => {
+    filterMI.addEventListener('change', (e) => {
       setMercadoInternoStatusFilter(e.target.value);
-      await fetchRemessas();
+      refilterOrdens();
       renderExpedicao();
     });
   }

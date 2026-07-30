@@ -20,6 +20,11 @@ let remessasStatusFilter = 'Todas';
 let transferenciasStatusFilter = 'Todas';
 let mercadoInternoStatusFilter = 'Todas';
 
+// Cache "cru" (sem filtro de status) das ordens já buscadas do Supabase nesta sessão.
+// null = ainda não buscou; [] = buscou e não tem nenhuma ordem. Permite trocar de
+// sub-aba ou de filtro de status sem refazer a busca no banco toda vez.
+let ordensRawCache = null;
+
 export function getTransferenciasStatusFilter() { return transferenciasStatusFilter; }
 export function setTransferenciasStatusFilter(val) { transferenciasStatusFilter = val; }
 
@@ -177,7 +182,7 @@ export async function renderExpedicao(container = document.getElementById('view-
   const canEdit = hasModuleAccess('expedicao', 'can_edit');
   const canDelete = hasModuleAccess('expedicao', 'can_delete');
 
-  if (activeMainTab === 'ordem_carregamento') {
+  if (activeMainTab === 'ordem_carregamento' && ordensRawCache === null) {
     await fetchRemessas();
   }
 
@@ -289,9 +294,9 @@ function bindExpedicaoEvents() {
 
   const filterRemessa = document.getElementById('remessa-status-filter');
   if (filterRemessa) {
-    filterRemessa.addEventListener('change', async (e) => {
+    filterRemessa.addEventListener('change', (e) => {
       remessasStatusFilter = e.target.value;
-      await fetchRemessas();
+      refilterOrdens();
       renderExpedicao();
     });
   }
@@ -441,46 +446,59 @@ function renderRemessaArmazemTab(canCreate, canEdit, canDelete) {
   `;
 }
 
+// Busca de verdade no Supabase. Só deve ser chamada quando os dados podem ter
+// mudado de fato: primeira entrada na página, criar/editar/excluir, ou o botão
+// "Atualizar". Trocar de sub-aba ou de filtro de status NÃO deve chamar isso —
+// usar refilterOrdens() nesses casos, que só reprocessa o que já está em memória.
 export async function fetchRemessas() {
   const bplid = getBPLID();
-  let query = supabase.from('expedicao_ordens_carregamento')
+  const { data, error } = await supabase.from('expedicao_ordens_carregamento')
     .select('*, expedicao_ordens_carregamento_itens(*)')
     .eq('bplid', bplid)
     .order('created_at', { ascending: false });
-    
-  const { data, error } = await query;
+
   if (error) {
     console.error('Error fetching OCs:', error);
     showToast('Erro ao carregar Ordens de Carregamento', 'error');
-  } else {
-    // Separa as remessas e transferências na hora de carregar para facilitar as abas
-    let remessasData = data.filter(r => !r.tipo || r.tipo === 'remessa_armazem');
-    if (remessasStatusFilter !== 'Todas') {
-      remessasData = remessasData.filter(r => r.status === remessasStatusFilter);
-    }
-    remessasCache = remessasData.map(r => ({
-      ...r,
-      itens_count: r.expedicao_ordens_carregamento_itens ? r.expedicao_ordens_carregamento_itens.length : 0
-    }));
-
-    let transfData = data.filter(r => r.tipo === 'transferencia_interna');
-    if (transferenciasStatusFilter !== 'Todas') {
-      transfData = transfData.filter(r => r.status === transferenciasStatusFilter);
-    }
-    transferenciasCache = transfData.map(r => ({
-      ...r,
-      itens_count: r.expedicao_ordens_carregamento_itens ? r.expedicao_ordens_carregamento_itens.length : 0
-    }));
-
-    let miData = data.filter(r => r.tipo === 'mercado_interno');
-    if (mercadoInternoStatusFilter !== 'Todas') {
-      miData = miData.filter(r => r.status === mercadoInternoStatusFilter);
-    }
-    mercadoInternoCache = miData.map(r => ({
-      ...r,
-      itens_count: r.expedicao_ordens_carregamento_itens ? r.expedicao_ordens_carregamento_itens.length : 0
-    }));
+    return;
   }
+
+  ordensRawCache = data;
+  refilterOrdens();
+}
+
+// Reprocessa remessasCache/transferenciasCache/mercadoInternoCache a partir do
+// ordensRawCache já em memória, aplicando os filtros de status atuais — sem
+// nenhuma chamada de rede.
+export function refilterOrdens() {
+  const data = ordensRawCache || [];
+
+  let remessasData = data.filter(r => !r.tipo || r.tipo === 'remessa_armazem');
+  if (remessasStatusFilter !== 'Todas') {
+    remessasData = remessasData.filter(r => r.status === remessasStatusFilter);
+  }
+  remessasCache = remessasData.map(r => ({
+    ...r,
+    itens_count: r.expedicao_ordens_carregamento_itens ? r.expedicao_ordens_carregamento_itens.length : 0
+  }));
+
+  let transfData = data.filter(r => r.tipo === 'transferencia_interna');
+  if (transferenciasStatusFilter !== 'Todas') {
+    transfData = transfData.filter(r => r.status === transferenciasStatusFilter);
+  }
+  transferenciasCache = transfData.map(r => ({
+    ...r,
+    itens_count: r.expedicao_ordens_carregamento_itens ? r.expedicao_ordens_carregamento_itens.length : 0
+  }));
+
+  let miData = data.filter(r => r.tipo === 'mercado_interno');
+  if (mercadoInternoStatusFilter !== 'Todas') {
+    miData = miData.filter(r => r.status === mercadoInternoStatusFilter);
+  }
+  mercadoInternoCache = miData.map(r => ({
+    ...r,
+    itens_count: r.expedicao_ordens_carregamento_itens ? r.expedicao_ordens_carregamento_itens.length : 0
+  }));
 }
 
 async function fetchPedidos() {

@@ -2,7 +2,7 @@ import { getBPLID } from '../auth/auth.js';
 import { supabase } from '../config/supabase.js';
 import { showToast } from '../components/toast.js';
 import { confirmDialog } from '../components/modal.js';
-import { fetchRemessas, fetchLogisticaData, transferenciasCache, empresasCache, placasCache, motoristasCache, getTransferenciasStatusFilter, setTransferenciasStatusFilter, renderExpedicao } from './expedicao.js';
+import { fetchRemessas, refilterOrdens, fetchLogisticaData, transferenciasCache, empresasCache, placasCache, motoristasCache, getTransferenciasStatusFilter, setTransferenciasStatusFilter, renderExpedicao } from './expedicao.js';
 import { printRomaneioReport } from '../components/romaneio-report.js';
 
 let expedicaoItemsCache = [];
@@ -104,9 +104,9 @@ export function renderTransferenciaInternaTab(canCreate, canEdit, canDelete) {
 export function bindTransferenciaEvents() {
   const filterTransf = document.getElementById('transf-status-filter');
   if (filterTransf) {
-    filterTransf.addEventListener('change', async (e) => {
+    filterTransf.addEventListener('change', (e) => {
       setTransferenciasStatusFilter(e.target.value);
-      await fetchRemessas();
+      refilterOrdens();
       renderExpedicao();
     });
   }
