@@ -659,7 +659,7 @@ const REGRAS_DISTRIBUICAO = [
   { codigo: '2', nome: 'Laminação' },
   { codigo: '3', nome: 'Geração de Vapor' },
   { codigo: '4', nome: 'Secagem' },
-  { codigo: '5', nome: 'Compensados' },
+  { codigo: '5', nome: 'Colagem' },
   { codigo: '6', nome: 'Acabamento / Revestimento' },
   { codigo: '7', nome: 'Administrativo e Apoio' },
   { codigo: '8', nome: 'Investimentos' },
