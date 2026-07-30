@@ -597,7 +597,83 @@ async function saveFuncionario(editId) {
   }
 }
 
+// Anexa uma lista de sugestões estilizada (mesma cor/borda do app) embaixo de um
+// input de texto, filtrando `optionsList` conforme o usuário digita. Precisa ser
+// anexada ao document.body (não dentro do modal) porque .modal-body tem
+// overflow-y: auto e cortaria a lista. Retorna o elemento pra poder remover na
+// hora de fechar o modal (evita acumular <div> órfã no body a cada abertura).
+function attachSearchDropdown(inputEl, optionsList) {
+  const dropdown = document.createElement('div');
+  dropdown.className = 'entrega-search-dropdown';
+  dropdown.style.cssText = 'display: none; position: fixed; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); box-shadow: var(--shadow-lg); max-height: 260px; overflow-y: auto; z-index: 999999;';
+  document.body.appendChild(dropdown);
+
+  function position() {
+    const rect = inputEl.getBoundingClientRect();
+    dropdown.style.top = (rect.bottom + 4) + 'px';
+    dropdown.style.left = rect.left + 'px';
+    dropdown.style.width = rect.width + 'px';
+  }
+
+  function render(filterText) {
+    const term = filterText.toLowerCase();
+    const filtered = optionsList.filter((o) => o.toLowerCase().includes(term));
+    if (filtered.length === 0) {
+      dropdown.innerHTML = `<div style="padding: var(--space-3); color: var(--color-text-secondary); font-size: var(--font-size-sm);">Nenhum resultado</div>`;
+      return;
+    }
+    dropdown.innerHTML = filtered
+      .map((o) => `<div class="entrega-search-dropdown-option" style="padding: var(--space-2) var(--space-3); cursor: pointer; font-size: var(--font-size-sm); color: var(--color-text); border-bottom: 1px solid var(--color-border-light); white-space: normal; word-break: break-word;">${o}</div>`)
+      .join('');
+    dropdown.querySelectorAll('.entrega-search-dropdown-option').forEach((opt, idx) => {
+      opt.addEventListener('mousedown', (e) => {
+        e.preventDefault(); // roda antes do blur do input
+        inputEl.value = filtered[idx];
+        dropdown.style.display = 'none';
+      });
+      opt.addEventListener('mouseenter', () => { opt.style.background = 'var(--color-surface-alt)'; });
+      opt.addEventListener('mouseleave', () => { opt.style.background = ''; });
+    });
+  }
+
+  inputEl.addEventListener('focus', () => {
+    position();
+    render(inputEl.value);
+    dropdown.style.display = 'block';
+  });
+  inputEl.addEventListener('input', () => {
+    position();
+    render(inputEl.value);
+    dropdown.style.display = 'block';
+  });
+  inputEl.addEventListener('blur', () => {
+    dropdown.style.display = 'none';
+  });
+
+  return dropdown;
+}
+
+// Regra de Distribuição (CostingCode) do SAP — lista fixa de centros de custo da empresa.
+const REGRAS_DISTRIBUICAO = [
+  { codigo: '1', nome: 'Pátio de Toras / Máq. Rodantes' },
+  { codigo: '2', nome: 'Laminação' },
+  { codigo: '3', nome: 'Geração de Vapor' },
+  { codigo: '4', nome: 'Secagem' },
+  { codigo: '5', nome: 'Compensados' },
+  { codigo: '6', nome: 'Acabamento / Revestimento' },
+  { codigo: '7', nome: 'Administrativo e Apoio' },
+  { codigo: '8', nome: 'Investimentos' },
+  { codigo: '9', nome: 'Logíst. / Desp. Portos e Afins' },
+  { codigo: '10', nome: 'Silvicultura / Florestal' },
+  { codigo: '98', nome: 'Linha OSB' },
+  { codigo: '99', nome: 'Almoxarifado Central' },
+];
+
 async function showNovaEntregaModal() {
+  // Limpeza defensiva: remove qualquer dropdown órfão de uma abertura anterior
+  // que não tenha sido removida (ex: modal fechado pelo X ou pela tecla ESC).
+  document.querySelectorAll('.entrega-search-dropdown').forEach((el) => el.remove());
+
   const [itens, estoqueEPI, funcionariosResp] = await Promise.all([
     fetchCadastroItens(),
     fetchEstoquePorArmazem('EPI'),
@@ -615,32 +691,38 @@ async function showNovaEntregaModal() {
     return;
   }
 
-  const funcOptions = '<option value="">Selecione...</option>' +
-    funcionariosAtivos.map((f) => `<option value="${f.id}">${f.codigo} - ${f.nome}</option>`).join('');
-
   const bodyHTML = `
     <form id="entrega-form">
-      <div class="form-group">
-        <label class="form-label">Funcionário <span class="required">*</span></label>
-        <select class="form-select" id="entrega-funcionario" required>${funcOptions}</select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Itens Entregues <span class="required">*</span></label>
-        <table class="table" style="margin-top: 8px;">
-          <thead>
-            <tr>
-              <th>Item</th>
-              <th style="width: 120px;">Quantidade</th>
-              <th style="width: 40px;"></th>
-            </tr>
-          </thead>
-          <tbody id="entrega-items-tbody"></tbody>
-        </table>
-        <button type="button" class="btn btn-secondary btn-sm" id="btn-add-entrega-item" style="margin-top: 8px;">+ Adicionar Item</button>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Observação</label>
-        <textarea class="form-input" id="entrega-observacao" rows="2"></textarea>
+      <div style="display: flex; flex-direction: column; gap: var(--space-4);">
+        <div class="form-group">
+          <label class="form-label">Funcionário <span class="required">*</span></label>
+          <input type="text" class="form-input" id="entrega-funcionario-input" placeholder="Digite o nome ou código do funcionário..." autocomplete="off" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Regra de Distribuição <span class="required">*</span></label>
+          <select class="form-select" id="entrega-regra-distribuicao" required>
+            <option value="">Selecione...</option>
+            ${REGRAS_DISTRIBUICAO.map((r) => `<option value="${r.codigo}">${r.codigo} - ${r.nome}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Itens Entregues <span class="required">*</span></label>
+          <table class="table" style="margin-top: 8px;">
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th style="width: 120px;">Quantidade</th>
+                <th style="width: 40px;"></th>
+              </tr>
+            </thead>
+            <tbody id="entrega-items-tbody"></tbody>
+          </table>
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-add-entrega-item" style="margin-top: 8px;">+ Adicionar Item</button>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Observação</label>
+          <textarea class="form-input" id="entrega-observacao" rows="2"></textarea>
+        </div>
       </div>
       <div style="margin-top: var(--space-5); display:flex; justify-content:flex-end; gap: var(--space-2); border-top: 1px solid var(--color-border); padding-top: var(--space-3);">
         <button type="button" class="btn btn-secondary btn-sm" id="btn-cancel-entrega">Cancelar</button>
@@ -651,61 +733,97 @@ async function showNovaEntregaModal() {
 
   openModal('Nova Entrega de EPI', bodyHTML, '', { maxWidth: '720px' });
 
-  document.getElementById('btn-cancel-entrega').addEventListener('click', closeModal);
+  // Remove todos os dropdowns anexados ao body por essa instância do modal
+  // antes de fechar (Cancelar ou após salvar) — evita <div> órfã acumulando.
+  function closeEntregaModal() {
+    document.querySelectorAll('.entrega-search-dropdown').forEach((el) => el.remove());
+    closeModal();
+  }
+
+  document.getElementById('btn-cancel-entrega').addEventListener('click', closeEntregaModal);
+
+  attachSearchDropdown(
+    document.getElementById('entrega-funcionario-input'),
+    funcionariosAtivos.map((f) => `${f.codigo} - ${f.nome}`)
+  );
 
   const estoqueMap = new Map(estoqueEPI.map((i) => [i.ItemCode, Number(i.InStock) || 0]));
-  const itemOptions = '<option value="">Selecione...</option>' +
-    itens.map((i) => `<option value="${i.ItemCode}" data-nome="${i.ItemName}">${i.ItemCode} - ${i.ItemName}</option>`).join('');
+  const itemOptionsList = itens.map((i) => `${i.ItemCode} - ${i.ItemName}`);
 
   function addEntregaItemRow() {
     const tbody = document.getElementById('entrega-items-tbody');
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td><select class="form-select entrega-item-select" required>${itemOptions}</select></td>
+      <td><input type="text" class="form-input entrega-item-input" placeholder="Digite o código ou nome do item..." autocomplete="off" required></td>
       <td><input type="number" class="form-input entrega-item-qtd" min="0.01" step="0.01" value="1" required></td>
       <td><button type="button" class="btn btn-icon btn-remove-entrega-item">✕</button></td>
     `;
     tbody.appendChild(tr);
+    tr._dropdown = attachSearchDropdown(tr.querySelector('.entrega-item-input'), itemOptionsList);
   }
 
   document.getElementById('btn-add-entrega-item').addEventListener('click', addEntregaItemRow);
   document.getElementById('entrega-items-tbody').addEventListener('click', (e) => {
     if (e.target.closest('.btn-remove-entrega-item')) {
-      e.target.closest('tr').remove();
+      const tr = e.target.closest('tr');
+      tr._dropdown?.remove();
+      tr.remove();
     }
   });
   addEntregaItemRow();
 
   document.getElementById('entrega-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    await saveEntrega(funcionariosAtivos, estoqueMap);
+    await saveEntrega(funcionariosAtivos, itens, estoqueMap, closeEntregaModal);
   });
 }
 
-async function saveEntrega(funcionariosAtivos, estoqueMap) {
+async function saveEntrega(funcionariosAtivos, itens, estoqueMap, closeEntregaModal) {
   const btn = document.getElementById('btn-save-entrega');
   const originalText = btn.innerText;
-  const funcionarioId = document.getElementById('entrega-funcionario').value;
   const observacao = document.getElementById('entrega-observacao').value.trim() || null;
 
-  if (!funcionarioId) {
-    showToast('Selecione um funcionário.', 'error');
+  const funcionarioDigitado = document.getElementById('entrega-funcionario-input').value.trim();
+  const funcionario = funcionariosAtivos.find((f) => `${f.codigo} - ${f.nome}` === funcionarioDigitado);
+  if (!funcionario) {
+    showToast('Selecione um funcionário válido da lista.', 'error');
+    return;
+  }
+  const funcionarioId = funcionario.id;
+
+  const regraDistribuicao = document.getElementById('entrega-regra-distribuicao').value;
+  if (!regraDistribuicao) {
+    showToast('Selecione a Regra de Distribuição.', 'error');
     return;
   }
 
   const rows = Array.from(document.querySelectorAll('#entrega-items-tbody tr'));
   const linhas = [];
+  let itemInvalido = false;
   for (const row of rows) {
-    const select = row.querySelector('.entrega-item-select');
+    const itemInput = row.querySelector('.entrega-item-input');
     const qtdInput = row.querySelector('.entrega-item-qtd');
-    const itemCode = select.value;
+    const digitado = itemInput.value.trim();
+    if (!digitado) continue;
+
+    const item = itens.find((i) => `${i.ItemCode} - ${i.ItemName}` === digitado);
+    if (!item) {
+      itemInvalido = true;
+      continue;
+    }
+
     const quantidade = parseFloat(qtdInput.value);
-    if (!itemCode || !quantidade || quantidade <= 0) continue;
+    if (!quantidade || quantidade <= 0) continue;
     linhas.push({
-      item_code: itemCode,
-      item_name: select.options[select.selectedIndex].dataset.nome,
+      item_code: item.ItemCode,
+      item_name: item.ItemName,
       quantidade,
     });
+  }
+
+  if (itemInvalido) {
+    showToast('Um ou mais itens não correspondem a um item válido da lista — corrija antes de continuar.', 'error');
+    return;
   }
 
   if (linhas.length === 0) {
@@ -726,10 +844,12 @@ async function saveEntrega(funcionariosAtivos, estoqueMap) {
 
   const payload = {
     BPL_IDAssignedToInvoice: getBPLID(),
+    Comments: `Entrega de EPI - ${funcionario.nome} - Setor: ${funcionario.setor}`,
     DocumentLines: linhas.map((l) => ({
       ItemCode: l.item_code,
       Quantity: l.quantidade,
       WarehouseCode: 'EPI',
+      CostingCode: regraDistribuicao,
     })),
   };
 
@@ -768,7 +888,7 @@ async function saveEntrega(funcionariosAtivos, estoqueMap) {
 
     estoqueInternoCache = null; // invalida pra refletir o saldo novo na aba Estoque
 
-    closeModal();
+    closeEntregaModal();
     showToast('Entrega registrada com sucesso!', 'success');
 
     const funcionario = funcionariosAtivos.find((f) => f.id === funcionarioId);
