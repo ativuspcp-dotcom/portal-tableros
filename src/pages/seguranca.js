@@ -23,6 +23,9 @@ let estoqueInternoCache = null;
 let estoqueCdCache = null;
 let funcionariosCache = [];
 
+let estoqueInternoSearchFilter = '';
+let estoqueCdSearchFilter = '';
+
 let funcSearchFilter = '';
 let funcSetorFilter = '';
 let funcTurnoFilter = '';
@@ -107,7 +110,15 @@ function renderCadastroItensTab() {
 }
 
 function renderEstoqueTab() {
+  const warehouseCode = activeSubTab === 'interno' ? 'EPI' : 'GERAL';
+  const currentFilter = warehouseCode === 'EPI' ? estoqueInternoSearchFilter : estoqueCdSearchFilter;
   return `
+    <div class="toolbar" style="margin-bottom: var(--space-4);">
+      <div style="position: relative; width: 280px; max-width: 100%;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--color-text-secondary);"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" id="estoque-search" class="form-input" placeholder="Buscar por código ou nome..." value="${currentFilter.replace(/"/g, '&quot;')}" style="padding-left: 32px; font-size: var(--font-size-sm); height: 34px; width: 100%;">
+      </div>
+    </div>
     <div class="card" style="padding: 0; overflow: hidden;">
       <div class="table-wrapper" id="seguranca-estoque-wrapper">
         <div style="padding: var(--space-8); text-align: center; color: var(--color-text-secondary);">Carregando estoque...</div>
@@ -256,15 +267,36 @@ async function loadCadastroItensTab() {
 }
 
 async function loadEstoqueTab(warehouseCode) {
+  await fetchEstoquePorArmazem(warehouseCode);
+  renderEstoqueTable(warehouseCode);
+}
+
+function renderEstoqueTable(warehouseCode) {
   const wrapper = document.getElementById('seguranca-estoque-wrapper');
   if (!wrapper) return;
 
-  const itens = [...(await fetchEstoquePorArmazem(warehouseCode))].sort((a, b) => a.ItemName.localeCompare(b.ItemName, 'pt-BR'));
-  if (itens.length === 0) {
+  const cache = warehouseCode === 'EPI' ? estoqueInternoCache : estoqueCdCache;
+  const search = (warehouseCode === 'EPI' ? estoqueInternoSearchFilter : estoqueCdSearchFilter).toLowerCase().trim();
+
+  if (!cache || cache.length === 0) {
     wrapper.innerHTML = `
       <div class="empty-state">
         <div class="empty-state-title">Nenhum item com saldo</div>
         <div class="empty-state-desc">Nenhum item com estoque no armazém "${warehouseCode}" retornado pelo SAP.</div>
+      </div>
+    `;
+    return;
+  }
+
+  const itens = cache
+    .filter((i) => !search || i.ItemCode.toLowerCase().includes(search) || i.ItemName.toLowerCase().includes(search))
+    .sort((a, b) => a.ItemName.localeCompare(b.ItemName, 'pt-BR'));
+
+  if (itens.length === 0) {
+    wrapper.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-title">Nenhum item encontrado</div>
+        <div class="empty-state-desc">Ajuste a busca pra ver outros resultados.</div>
       </div>
     `;
     return;
@@ -653,6 +685,15 @@ function attachSearchDropdown(inputEl, optionsList) {
   return dropdown;
 }
 
+// Data local (não UTC) no formato yyyy-mm-dd, pro value/max de <input type="date">
+function todayLocalDateString() {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
 // Regra de Distribuição (CostingCode) do SAP — lista fixa de centros de custo da empresa.
 const REGRAS_DISTRIBUICAO = [
   { codigo: '1', nome: 'Pátio de Toras / Máq. Rodantes' },
@@ -697,6 +738,10 @@ async function showNovaEntregaModal() {
         <div class="form-group">
           <label class="form-label">Funcionário <span class="required">*</span></label>
           <input type="text" class="form-input" id="entrega-funcionario-input" placeholder="Digite o nome ou código do funcionário..." autocomplete="off" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Data da Entrega <span class="required">*</span></label>
+          <input type="date" class="form-input" id="entrega-data" value="${todayLocalDateString()}" max="${todayLocalDateString()}" required>
         </div>
         <div class="form-group">
           <label class="form-label">Regra de Distribuição <span class="required">*</span></label>
@@ -797,6 +842,16 @@ async function saveEntrega(funcionariosAtivos, itens, estoqueMap, closeEntregaMo
     return;
   }
 
+  const dataEntregaDigitada = document.getElementById('entrega-data').value; // "yyyy-mm-dd"
+  if (!dataEntregaDigitada) {
+    showToast('Selecione a Data da Entrega.', 'error');
+    return;
+  }
+  // Usa a data escolhida, mas preserva a hora atual (em vez de zerar pra meia-noite)
+  const [anoEntrega, mesEntrega, diaEntrega] = dataEntregaDigitada.split('-').map(Number);
+  const agora = new Date();
+  const dataEntrega = new Date(anoEntrega, mesEntrega - 1, diaEntrega, agora.getHours(), agora.getMinutes(), agora.getSeconds());
+
   const rows = Array.from(document.querySelectorAll('#entrega-items-tbody tr'));
   const linhas = [];
   let itemInvalido = false;
@@ -872,6 +927,7 @@ async function saveEntrega(funcionariosAtivos, itens, estoqueMap, closeEntregaMo
       .from('seguranca_entregas')
       .insert([{
         funcionario_id: funcionarioId,
+        data_entrega: dataEntrega.toISOString(),
         registrado_por: session?.user?.id || null,
         sap_doc_entry: sapDocEntry ? String(sapDocEntry) : null,
         sap_doc_num: sapDocNum ? String(sapDocNum) : null,
@@ -1011,4 +1067,14 @@ function bindSegurancaEvents() {
 
   const btnNovaEntrega = document.getElementById('btn-nova-entrega');
   if (btnNovaEntrega) btnNovaEntrega.addEventListener('click', () => showNovaEntregaModal());
+
+  const estoqueSearchInput = document.getElementById('estoque-search');
+  if (estoqueSearchInput) {
+    estoqueSearchInput.addEventListener('input', (e) => {
+      const warehouseCode = activeSubTab === 'interno' ? 'EPI' : 'GERAL';
+      if (warehouseCode === 'EPI') estoqueInternoSearchFilter = e.target.value;
+      else estoqueCdSearchFilter = e.target.value;
+      renderEstoqueTable(warehouseCode);
+    });
+  }
 }
