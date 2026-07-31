@@ -9,6 +9,9 @@ import { printFichaEntregaEPI } from '../components/ficha-entrega-epi-report.js'
 
 let activeMainTab = sessionStorage.getItem('segurancaActiveMainTab') || 'cadastro_itens';
 let activeSubTab = sessionStorage.getItem('segurancaActiveSubTab') || 'interno';
+// Sub-aba própria de Movimentações — separada de activeSubTab pra não conflitar
+// com o significado de "interno"/"cd" usado pela aba Estoque.
+let activeMovimentacoesSubTab = sessionStorage.getItem('segurancaActiveMovimentacoesSubTab') || 'entregas';
 
 const SAP_FETCH_OPTIONS = {
   headers: {
@@ -31,6 +34,12 @@ let funcSetorFilter = '';
 let funcTurnoFilter = '';
 let funcFuncaoFilter = '';
 let funcStatusFilter = '';
+
+let entregasCache = [];
+let entregasSearchFilter = '';
+let entregasPage = 0;
+let entregasHasMore = false;
+const ENTREGAS_PAGE_SIZE = 25;
 
 /**
  * Render Segurança (EPIs) page
@@ -59,6 +68,10 @@ export async function renderSeguranca(container = document.getElementById('view-
               style="padding: var(--space-2) var(--space-4); border-radius: var(--radius-md) var(--radius-md) 0 0; font-weight: var(--font-weight-semibold); border: 1px solid ${activeMainTab === 'funcionarios' ? 'var(--color-border)' : 'transparent'}; border-bottom: 1px solid ${activeMainTab === 'funcionarios' ? 'var(--color-surface)' : 'transparent'}; color: ${activeMainTab === 'funcionarios' ? 'var(--color-primary)' : 'var(--color-text-secondary)'}; background: ${activeMainTab === 'funcionarios' ? 'var(--color-surface)' : 'transparent'}; margin-bottom: -1px; font-size: var(--font-size-base); transition: all var(--transition-fast);">
               Funcionários
             </button>
+            <button class="seguranca-main-tab-btn ${activeMainTab === 'movimentacoes' ? 'active' : ''}" data-tab="movimentacoes"
+              style="padding: var(--space-2) var(--space-4); border-radius: var(--radius-md) var(--radius-md) 0 0; font-weight: var(--font-weight-semibold); border: 1px solid ${activeMainTab === 'movimentacoes' ? 'var(--color-border)' : 'transparent'}; border-bottom: 1px solid ${activeMainTab === 'movimentacoes' ? 'var(--color-surface)' : 'transparent'}; color: ${activeMainTab === 'movimentacoes' ? 'var(--color-primary)' : 'var(--color-text-secondary)'}; background: ${activeMainTab === 'movimentacoes' ? 'var(--color-surface)' : 'transparent'}; margin-bottom: -1px; font-size: var(--font-size-base); transition: all var(--transition-fast);">
+              Movimentações
+            </button>
           </div>
 
           <!-- Secondary Navigation Tabs -->
@@ -74,12 +87,21 @@ export async function renderSeguranca(container = document.getElementById('view-
               </button>
             </div>
           ` : ''}
+          ${activeMainTab === 'movimentacoes' ? `
+            <div class="seguranca-sub-tabs" style="display: flex; gap: var(--space-4); margin-bottom: var(--space-4); border-bottom: 1px solid var(--color-border-light); padding-bottom: var(--space-2); padding-left: var(--space-2);">
+              <button class="seguranca-mov-sub-tab-btn ${activeMovimentacoesSubTab === 'entregas' ? 'active' : ''}" data-movsubtab="entregas"
+                style="font-size: var(--font-size-sm); font-weight: ${activeMovimentacoesSubTab === 'entregas' ? '600' : '400'}; color: ${activeMovimentacoesSubTab === 'entregas' ? 'var(--color-primary)' : 'var(--color-text-secondary)'}; border: none; background: transparent; border-bottom: 2px solid ${activeMovimentacoesSubTab === 'entregas' ? 'var(--color-primary)' : 'transparent'}; padding-bottom: 4px; transition: all var(--transition-fast);">
+                Entregas
+              </button>
+            </div>
+          ` : ''}
 
           <!-- Tab Content -->
           <div id="seguranca-tab-content">
             ${activeMainTab === 'cadastro_itens' ? renderCadastroItensTab() : ''}
             ${activeMainTab === 'estoque' ? renderEstoqueTab() : ''}
             ${activeMainTab === 'funcionarios' ? renderFuncionariosTab() : ''}
+            ${activeMainTab === 'movimentacoes' && activeMovimentacoesSubTab === 'entregas' ? renderEntregasTab() : ''}
           </div>
         </div>
       </div>
@@ -96,6 +118,8 @@ export async function renderSeguranca(container = document.getElementById('view-
     loadEstoqueTab(warehouseCode);
   } else if (activeMainTab === 'funcionarios') {
     loadFuncionariosTab();
+  } else if (activeMainTab === 'movimentacoes' && activeMovimentacoesSubTab === 'entregas') {
+    loadEntregasTab();
   }
 }
 
@@ -147,6 +171,189 @@ function renderFuncionariosTab() {
       <div style="padding: var(--space-8); text-align: center; color: var(--color-text-secondary);">Carregando funcionários...</div>
     </div>
   `;
+}
+
+function renderEntregasTab() {
+  return `
+    <div class="toolbar" style="margin-bottom: var(--space-4); display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: flex-end; justify-content: space-between;">
+      <div class="toolbar-left" style="display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: flex-end; flex: 1;">
+        <div style="display: flex; flex-direction: column; gap: 4px; flex: 1; max-width: 300px;">
+          <label style="font-size: var(--font-size-xs); font-weight: 500; color: var(--color-text-secondary);">Buscar por funcionário (nome ou código)</label>
+          <input type="text" id="entregas-search" class="form-input" style="height: 34px; font-size: var(--font-size-sm);" placeholder="Buscar..." value="${entregasSearchFilter.replace(/"/g, '&quot;')}">
+        </div>
+      </div>
+      <div class="toolbar-right">
+        <button class="btn btn-primary btn-sm" id="btn-entregas-buscar" style="height: 34px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          Pesquisar
+        </button>
+      </div>
+    </div>
+    <div class="card" style="padding: 0; overflow: hidden;">
+      <div class="table-wrapper" id="seguranca-entregas-wrapper">
+        <div style="padding: var(--space-8); text-align: center; color: var(--color-text-secondary);">Carregando entregas...</div>
+      </div>
+    </div>
+    <div style="display: flex; justify-content: flex-end; align-items: center; gap: var(--space-3); margin-top: var(--space-3);">
+      <span id="entregas-page-label" style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">Página 1</span>
+      <button type="button" class="btn btn-secondary btn-sm" id="btn-entregas-prev" disabled>Anterior</button>
+      <button type="button" class="btn btn-secondary btn-sm" id="btn-entregas-next" disabled>Próxima</button>
+    </div>
+  `;
+}
+
+async function loadEntregasTab() {
+  entregasPage = 0;
+  await fetchEntregasPage();
+}
+
+// Busca paginada no banco (não carrega tudo pra memória — pensado pra tabela
+// que pode crescer a milhões de linhas). A busca por funcionário também roda
+// no banco via join com seguranca_funcionarios, não em memória.
+async function fetchEntregasPage() {
+  const wrapper = document.getElementById('seguranca-entregas-wrapper');
+  if (!wrapper) return;
+  wrapper.innerHTML = `<div style="padding: var(--space-8); text-align: center; color: var(--color-text-secondary);">Carregando entregas...</div>`;
+
+  const search = entregasSearchFilter.trim();
+  const from = entregasPage * ENTREGAS_PAGE_SIZE;
+  const to = from + ENTREGAS_PAGE_SIZE; // +1 registro só pra saber se existe próxima página
+
+  let query = supabase
+    .from('seguranca_entregas')
+    .select('*, seguranca_funcionarios!inner(codigo, nome), seguranca_entrega_itens(*)')
+    .order('data_entrega', { ascending: false })
+    .range(from, to);
+
+  if (search) {
+    query = query.or(`nome.ilike.%${search}%,codigo.ilike.%${search}%`, { foreignTable: 'seguranca_funcionarios' });
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error('Erro ao buscar entregas', error);
+    wrapper.innerHTML = `<div class="empty-state"><div class="empty-state-title">Erro ao carregar entregas</div></div>`;
+    return;
+  }
+
+  entregasHasMore = (data || []).length > ENTREGAS_PAGE_SIZE;
+  entregasCache = entregasHasMore ? data.slice(0, ENTREGAS_PAGE_SIZE) : data || [];
+
+  renderEntregasTable();
+}
+
+function renderEntregasTable() {
+  const wrapper = document.getElementById('seguranca-entregas-wrapper');
+  if (!wrapper) return;
+
+  if (entregasCache.length === 0) {
+    wrapper.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-title">${entregasSearchFilter ? 'Nenhuma entrega encontrada' : 'Nenhuma entrega registrada'}</div>
+        <div class="empty-state-desc">${entregasSearchFilter ? 'Ajuste a busca pra ver outros resultados.' : 'As entregas de EPI registradas em Funcionários aparecem aqui.'}</div>
+      </div>
+    `;
+  } else {
+    wrapper.innerHTML = `
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Data da Entrega</th>
+            <th>Registrado em</th>
+            <th>Funcionário</th>
+            <th>Doc SAP</th>
+            <th style="text-align:right;">Qtd. Itens</th>
+            <th style="width: 100px;"></th>
+          </tr>
+        </thead>
+        <tbody>
+          ${entregasCache
+            .map(
+              (e) => `
+            <tr class="table-row-clickable" data-entrega-id="${e.id}" style="cursor: pointer;">
+              <td>${new Date(e.data_entrega).toLocaleString('pt-BR')}</td>
+              <td>${new Date(e.created_at).toLocaleString('pt-BR')}</td>
+              <td>${e.seguranca_funcionarios ? `${e.seguranca_funcionarios.codigo} - ${e.seguranca_funcionarios.nome}` : '-'}</td>
+              <td>${e.sap_doc_num || '-'}</td>
+              <td style="text-align:right;">${e.seguranca_entrega_itens.length}</td>
+              <td style="text-align:right;"><button class="btn btn-secondary btn-sm btn-ver-itens-entrega" data-entrega-id="${e.id}">Ver Itens</button></td>
+            </tr>
+          `
+            )
+            .join('')}
+        </tbody>
+      </table>
+    `;
+  }
+
+  wrapper.querySelectorAll('.btn-ver-itens-entrega, tr[data-entrega-id]').forEach((el) => {
+    el.addEventListener('click', (ev) => {
+      // Evita disparar duas vezes quando o clique é no botão dentro da linha
+      if (el.tagName === 'TR' && ev.target.closest('.btn-ver-itens-entrega')) return;
+      const entrega = entregasCache.find((x) => x.id === el.dataset.entregaId);
+      if (entrega) showEntregaItensModal(entrega);
+    });
+  });
+
+  const pageLabel = document.getElementById('entregas-page-label');
+  if (pageLabel) pageLabel.textContent = `Página ${entregasPage + 1}`;
+
+  const btnPrev = document.getElementById('btn-entregas-prev');
+  if (btnPrev) btnPrev.disabled = entregasPage === 0;
+
+  const btnNext = document.getElementById('btn-entregas-next');
+  if (btnNext) btnNext.disabled = !entregasHasMore;
+}
+
+function showEntregaItensModal(entrega) {
+  const funcionario = entrega.seguranca_funcionarios;
+  const bodyHTML = `
+    <div style="margin-bottom: var(--space-4);">
+      <div style="font-weight:600; font-size: var(--font-size-lg);">${funcionario ? funcionario.nome : 'Funcionário não encontrado'}</div>
+      <div style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">
+        ${funcionario ? `Código: ${funcionario.codigo} · ` : ''}${new Date(entrega.data_entrega).toLocaleString('pt-BR')}
+        ${entrega.sap_doc_num ? ` · Doc SAP: ${entrega.sap_doc_num}` : ''}
+      </div>
+    </div>
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Código</th>
+          <th>Item</th>
+          <th style="text-align:right;">Quantidade</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${entrega.seguranca_entrega_itens
+          .map(
+            (i) => `
+          <tr><td style="font-family:monospace;">${i.item_code}</td><td>${i.item_name}</td><td style="text-align:right;">${i.quantidade}</td></tr>
+        `
+          )
+          .join('')}
+      </tbody>
+    </table>
+    ${entrega.observacao ? `<div style="margin-top: var(--space-3); font-size: var(--font-size-sm); color: var(--color-text-secondary);">Obs: ${entrega.observacao}</div>` : ''}
+  `;
+
+  const footerHTML = funcionario
+    ? `<button class="btn btn-secondary btn-sm" id="btn-reimprimir-entrega-mov">Reimprimir Ficha</button>`
+    : '';
+
+  openModal('Itens da Entrega', bodyHTML, footerHTML, { maxWidth: '600px' });
+
+  const btnReimprimir = document.getElementById('btn-reimprimir-entrega-mov');
+  if (btnReimprimir) {
+    btnReimprimir.addEventListener('click', () => {
+      printFichaEntregaEPI({
+        funcionario: { codigo: funcionario.codigo, nome: funcionario.nome },
+        data_entrega: entrega.data_entrega,
+        sap_doc_num: entrega.sap_doc_num,
+        itens: entrega.seguranca_entrega_itens,
+      });
+    });
+  }
 }
 
 async function fetchCadastroItens() {
@@ -1062,6 +1269,17 @@ function bindSegurancaEvents() {
     });
   });
 
+  document.querySelectorAll('.seguranca-mov-sub-tab-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      const targetSubTab = e.currentTarget.dataset.movsubtab;
+      if (targetSubTab !== activeMovimentacoesSubTab) {
+        activeMovimentacoesSubTab = targetSubTab;
+        sessionStorage.setItem('segurancaActiveMovimentacoesSubTab', activeMovimentacoesSubTab);
+        renderSeguranca();
+      }
+    });
+  });
+
   const btnNovoFuncionario = document.getElementById('btn-novo-funcionario');
   if (btnNovoFuncionario) btnNovoFuncionario.addEventListener('click', () => showFuncionarioModal());
 
@@ -1075,6 +1293,56 @@ function bindSegurancaEvents() {
       if (warehouseCode === 'EPI') estoqueInternoSearchFilter = e.target.value;
       else estoqueCdSearchFilter = e.target.value;
       renderEstoqueTable(warehouseCode);
+    });
+  }
+
+  async function executarBuscaEntregas() {
+    const btn = document.getElementById('btn-entregas-buscar');
+    const originalHTML = btn?.innerHTML;
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = 'Pesquisando...';
+    }
+
+    entregasSearchFilter = document.getElementById('entregas-search').value;
+    entregasPage = 0;
+    await fetchEntregasPage();
+
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = originalHTML;
+    }
+  }
+
+  const entregasSearchInput = document.getElementById('entregas-search');
+  if (entregasSearchInput) {
+    entregasSearchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') executarBuscaEntregas();
+    });
+  }
+
+  const btnEntregasBuscar = document.getElementById('btn-entregas-buscar');
+  if (btnEntregasBuscar) {
+    btnEntregasBuscar.addEventListener('click', executarBuscaEntregas);
+  }
+
+  const btnEntregasPrev = document.getElementById('btn-entregas-prev');
+  if (btnEntregasPrev) {
+    btnEntregasPrev.addEventListener('click', () => {
+      if (entregasPage > 0) {
+        entregasPage -= 1;
+        fetchEntregasPage();
+      }
+    });
+  }
+
+  const btnEntregasNext = document.getElementById('btn-entregas-next');
+  if (btnEntregasNext) {
+    btnEntregasNext.addEventListener('click', () => {
+      if (entregasHasMore) {
+        entregasPage += 1;
+        fetchEntregasPage();
+      }
     });
   }
 }
