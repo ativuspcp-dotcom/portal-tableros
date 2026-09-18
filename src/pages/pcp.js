@@ -5,12 +5,20 @@ import { openModal, closeModal, confirmDialog } from '../components/modal.js';
 import { showToast } from '../components/toast.js';
 import { hasModuleAccess } from '../utils/permissions.js';
 import { fetchAmarracaoOps, renderAmarracaoView, bindAmarracaoEvents } from './op/amarracao.js';
+import { fetchSecagemOps, renderSecagemView, bindSecagemEvents } from './op/secagem.js';
 import { fetchEstoqueCompAcabado, renderEstoqueCompAcabadoView, renderEstoqueDashboard, bindEstoqueCompAcabadoEvents } from './estoque/comp-acabado.js';
 import { fetchAmarracoesProducao, renderAmarracoesProducaoView, bindAmarracoesProducaoEvents } from './producao/amarracoes.js';
 
 window.addEventListener('amarracao_created', () => {
   if (activeMainTab === 'op' && activeOpSubTab === 'amarracao') {
     renderPCP();
+  }
+});
+
+window.addEventListener('secagem_changed', () => {
+  if (activeMainTab === 'op' && activeOpSubTab === 'secagem') {
+    document.getElementById('pcp-tab-content').innerHTML = renderActiveTabView();
+    bindSecagemEvents();
   }
 });
 
@@ -165,6 +173,18 @@ export async function renderPCP(container = document.getElementById('view-pcp') 
         bindAmarracaoEvents();
       }
     });
+  } else if (activeMainTab === 'op' && activeOpSubTab === 'secagem') {
+    // Renderiza view vazia/loading primeiro
+    document.getElementById('pcp-tab-content').innerHTML = renderActiveTabView();
+    bindSecagemEvents();
+
+    // Busca os dados e atualiza a view silenciosamente
+    fetchSecagemOps().then(() => {
+      if (activeMainTab === 'op' && activeOpSubTab === 'secagem') {
+        document.getElementById('pcp-tab-content').innerHTML = renderActiveTabView();
+        bindSecagemEvents();
+      }
+    });
   } else if (activeMainTab === 'estoque' && (activeSubTab === 'estoque_comp_acabado' || !activeSubTab.startsWith('estoque_'))) {
     document.getElementById('pcp-tab-content').innerHTML = renderActiveTabView();
     fetchEstoqueCompAcabado().then(() => {
@@ -220,6 +240,10 @@ function renderActiveTabView() {
 
     if (activeMainTab === 'op' && activeOpSubTab === 'amarracao') {
       return renderAmarracaoView();
+    }
+
+    if (activeMainTab === 'op' && activeOpSubTab === 'secagem') {
+      return renderSecagemView();
     }
 
     return `
