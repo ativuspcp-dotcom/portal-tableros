@@ -65,7 +65,7 @@ async function fetchApontadores() {
   try {
     const { data: apons, error: aponsError } = await supabase
       .from('app_apontadores')
-      .select('*')
+      .select('id, nome_completo, status, criado_em')
       .order('criado_em', { ascending: false });
 
     if (aponsError) throw aponsError;
@@ -86,10 +86,7 @@ function renderTable() {
   const tbody = document.getElementById('apontadores-table-body');
   const query = document.getElementById('apontadores-search').value.toLowerCase();
 
-  const filtered = apontadores.filter(op => 
-    op.nome_completo.toLowerCase().includes(query) || 
-    op.pin.includes(query)
-  );
+  const filtered = apontadores.filter(op => op.nome_completo.toLowerCase().includes(query));
 
   if (filtered.length === 0) {
     tbody.innerHTML = `
@@ -110,7 +107,7 @@ function renderTable() {
     return `
       <tr>
         <td style="font-weight: 500;">${op.nome_completo}</td>
-        <td style="font-family: monospace; letter-spacing: 2px;">${op.pin}</td>
+        <td style="font-family: monospace; letter-spacing: 2px; color: var(--color-text-secondary);" title="O PIN é armazenado criptografado e não pode ser consultado">••••</td>
         <td>${statusBadge}</td>
         <td>
           <div style="display: flex; justify-content: center; gap: 4px;">
@@ -134,7 +131,7 @@ async function handleDelete(id) {
 
   const confirmed = await confirmDialog(
     'Excluir Apontador',
-    `Tem certeza que deseja excluir o apontador <strong>${op.nome_completo}</strong>? O PIN ${op.pin} será invalidado nos totens.`
+    `Tem certeza que deseja excluir o apontador <strong>${op.nome_completo}</strong>? O PIN dele será invalidado nos totens.`
   );
 
   if (!confirmed) return;
@@ -161,7 +158,7 @@ function showApontadorModal() {
       <div class="form-group">
         <label class="form-label">PIN (Senha de 4 dígitos) <span class="required">*</span></label>
         <input type="text" class="form-input" id="op-pin" placeholder="Ex: 1234" pattern="\\d{4}" maxlength="4" required style="font-family: monospace; font-size: 1.2rem; letter-spacing: 4px;" />
-        <small style="color: var(--color-text-secondary); font-size: 10px;">Somente números. Este PIN deve ser único na fábrica.</small>
+        <small style="color: var(--color-text-secondary); font-size: 10px;">Somente números. Este PIN deve ser único na fábrica. Após o cadastro ele não poderá mais ser consultado — anote e entregue ao apontador.</small>
       </div>
 
       <div class="modal-footer" style="margin-top: var(--space-4); margin-left: -24px; margin-right: -24px; margin-bottom: -24px;">
@@ -192,14 +189,11 @@ async function handleCreateApontador(e) {
     btn.disabled = true;
     btn.textContent = 'Criando...';
 
-    const { error: opError } = await supabase.from('app_apontadores').insert({
-      nome_completo: nome,
-      pin: pin,
-      status: 'ATIVO'
-    });
+    // Criação no servidor (função criar_apontador): grava só o hash do PIN e garante que seja único
+    const { error: opError } = await supabase.rpc('criar_apontador', { p_nome: nome, p_pin: pin });
 
     if (opError) {
-      if (opError.code === '23505') { // Unique violation
+      if (opError.code === '23505') { // PIN_DUPLICADO
         throw new Error('Este PIN já está em uso por outro apontador. Escolha outro.');
       }
       throw opError;
