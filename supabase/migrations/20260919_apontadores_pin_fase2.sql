@@ -1,5 +1,5 @@
--- FASE 2 (PENDENTE) — apontadores: RLS + remoção do PIN em texto puro.
--- Rodar SOMENTE depois de publicar os novos app-operacional e portal-tableros
+-- FASE 2 (APLICADA em 2026-09-19) — apontadores: RLS + remoção do PIN em texto puro.
+-- Foi rodada depois de publicar os novos app-operacional e portal-tableros
 -- (a fase 1 já está aplicada: coluna pin_hash, validar_pin, criar_apontador, tentativas).
 -- Clientes antigos (PWA em cache) deixam de validar PIN depois desta migração.
 
