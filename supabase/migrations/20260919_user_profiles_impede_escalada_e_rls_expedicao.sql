@@ -1,0 +1,16 @@
+-- APLICADA em 2026-09-19 (3 migrações no Supabase: user_profiles_impede_escalada_de_privilegio,
+-- rls_expedicao_e_reboques, revoke_execute_handle_new_user). Resumo do que cada uma faz:
+--
+-- 1) user_profiles / escalada de privilégio
+--    - is_admin() / is_super_admin(): SECURITY DEFINER lendo user_profiles.role (não user_metadata do JWT, que o usuário edita)
+--    - policies: SELECT (próprio ou admin), UPDATE próprio, UPDATE admin, DELETE só super_admin; sem INSERT via API
+--    - trigger proteger_user_profiles: usuário comum só altera full_name/avatar_url/last_sign_in;
+--      admin não promove a super_admin nem altera role/status de super_admin; service_role/SQL (auth.uid() null) passam
+--    - handle_new_user: role='user' e status='active' fixos (ignora raw_user_meta_data)
+--    - user_module_permissions e app_apontadores: policies passam a usar is_admin()
+--    - anon sem acesso a user_profiles/user_module_permissions
+-- 2) RLS em logistica_reboques, expedicao_romaneios, expedicao_romaneio_itens, expedicao_notas_fiscais:
+--    policy "authenticated acesso total" (mesmo padrão de amarracoes) + revoke all from anon
+-- 3) revoke execute on handle_new_user() from public, anon, authenticated (o trigger segue disparando)
+--
+-- Consultar o SQL exato: `select * from supabase_migrations.schema_migrations` / list_migrations do MCP.
