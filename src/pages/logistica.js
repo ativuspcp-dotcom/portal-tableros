@@ -16,7 +16,7 @@ let dataCache = {
 };
 
 export async function renderLogistica(container = document.getElementById('view-logistica') || document.getElementById('app')) {
-  const canCreate = hasModuleAccess('logistica', 'can_create');
+  const canActions = hasModuleAccess('logistica', 'can_actions');
   
   container.innerHTML = `
     <div class="app-layout">
@@ -73,7 +73,7 @@ export async function renderLogistica(container = document.getElementById('view-
                       Integração Ativa (SAP B1)
                     </span>
                     ` : `
-                    <button class="btn btn-primary" id="btn-novo-cadastro" ${canCreate ? '' : 'disabled'}>
+                    <button class="btn btn-primary" id="btn-novo-cadastro" ${canActions ? '' : 'disabled'}>
                       <span>+</span> Novo Registro
                     </button>
                     `}

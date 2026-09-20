@@ -152,17 +152,17 @@ function renderEstoqueTab() {
 }
 
 function renderFuncionariosTab() {
-  const canCreate = hasModuleAccess('seguranca', 'can_create');
+  const canActions = hasModuleAccess('seguranca', 'can_actions');
   return `
     <div class="toolbar" style="margin-bottom: var(--space-4);">
       <div class="toolbar-left">
         <h2 style="font-size: var(--font-size-xl); margin: 0;">Funcionários</h2>
       </div>
       <div class="toolbar-right" style="display: flex; gap: var(--space-2);">
-        <button class="btn btn-secondary" id="btn-novo-funcionario" ${canCreate ? '' : 'disabled'}>
+        <button class="btn btn-secondary" id="btn-novo-funcionario" ${canActions ? '' : 'disabled'}>
           <span>+</span> Novo Funcionário
         </button>
-        <button class="btn btn-primary" id="btn-nova-entrega" ${canCreate ? '' : 'disabled'}>
+        <button class="btn btn-primary" id="btn-nova-entrega" ${canActions ? '' : 'disabled'}>
           <span>+</span> Nova Entrega
         </button>
       </div>
@@ -588,7 +588,7 @@ function renderFuncionariosContent() {
   const container = document.getElementById('seguranca-funcionarios-container');
   if (!container) return;
 
-  const canEdit = hasModuleAccess('seguranca', 'can_edit');
+  const canActions = hasModuleAccess('seguranca', 'can_actions');
   const filtrados = getFilteredFuncionarios();
 
   const searchInputActive = document.activeElement?.id === 'func-search';
@@ -665,7 +665,7 @@ function renderFuncionariosContent() {
                 <td><span class="badge badge-${f.status === 'ativo' ? 'green' : 'gray'}">${f.status === 'ativo' ? 'Ativo' : 'Inativo'}</span></td>
                 <td style="text-align:right; white-space:nowrap;">
                   <button class="btn btn-secondary btn-sm btn-ficha-funcionario" data-id="${f.id}">Ficha</button>
-                  ${canEdit ? `<button class="btn btn-secondary btn-sm btn-editar-funcionario" data-id="${f.id}">Editar</button>` : ''}
+                  ${canActions ? `<button class="btn btn-secondary btn-sm btn-editar-funcionario" data-id="${f.id}">Editar</button>` : ''}
                 </td>
               </tr>
             `

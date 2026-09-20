@@ -982,7 +982,7 @@ input, select, textarea {
 
 .permission-module {
   display: grid;
-  grid-template-columns: 1fr repeat(4, 60px);
+  grid-template-columns: 1fr repeat(2, 60px);
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-3) var(--space-4);
@@ -1006,7 +1006,7 @@ input, select, textarea {
 
 .permission-header {
   display: grid;
-  grid-template-columns: 1fr repeat(4, 60px);
+  grid-template-columns: 1fr repeat(2, 60px);
   gap: var(--space-2);
   padding: 0 var(--space-4) var(--space-2);
 }
@@ -1612,7 +1612,7 @@ input, select, textarea {
   }
 
   .permission-module {
-    grid-template-columns: 1fr repeat(4, 45px);
+    grid-template-columns: 1fr repeat(2, 45px);
   }
 
   .modal {

@@ -1,13 +1,13 @@
 import { supabase } from '../../config/supabase.js';
 import { showToast } from '../../components/toast.js';
-import { openModal, closeModal, confirmDialog } from '../../components/modal.js';
+import { openModal, closeModal } from '../../components/modal.js';
 import { getBPLID } from '../../auth/auth.js';
 import { hasModuleAccess } from '../../utils/permissions.js';
 
-const SECADORES = ['FEZER', 'OMECO'];
-
 const TURNOS = ['00:00 - 06:00', '06:00 - 12:00', '12:00 - 18:00', '18:00 - 00:00'];
 
+// Regras de preenchimento por secador (por nome). Também existem na função do banco
+// salvar_setup_secador e no app-operacional (CONFIG em setup-secadores.js): alterar nos 3 lugares.
 const SECADOR_CONFIG = {
   FEZER: {
     tipos: ['PRODUÇÃO', 'RESSEQUE'],
@@ -27,6 +27,7 @@ const SECADOR_CONFIG = {
   }
 };
 
+let secadores = [];
 let secagemOps = [];
 let filterSecador = 'Todos';
 let filterStatus = 'Ativa';
@@ -41,6 +42,16 @@ function fmtBitola(v) {
 
 export async function fetchSecagemOps(forceRefresh = false) {
   try {
+    // Sequencial de propósito: não usar Promise.all em várias chamadas supabase.from()
+    const { data: secData, error: secError } = await supabase
+      .from('pcp_secadores')
+      .select('nome')
+      .eq('bpl_id', getBPLID())
+      .eq('ativo', true)
+      .order('nome');
+    if (secError) throw secError;
+    secadores = (secData || []).map(s => s.nome);
+
     const { data, error } = await supabase
       .from('pcp_op_secagem')
       .select('*')
@@ -60,9 +71,20 @@ function getActiveOp(secador) {
 }
 
 export function renderSecagemView() {
-  const canEdit = hasModuleAccess('pcp', 'can_edit') || hasModuleAccess('pcp', 'can_create');
+  const canActions = hasModuleAccess('pcp', 'can_actions');
 
-  const cardsHtml = SECADORES.map(secador => {
+  if (secadores.length === 0) {
+    return `
+      <div class="card" style="text-align: center; padding: var(--space-12); border-color: var(--color-border); background: var(--color-surface);">
+        <h3 style="font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); margin-bottom: var(--space-2); color: var(--color-text);">Secagem</h3>
+        <p style="color: var(--color-text-secondary); max-width: 460px; margin: 0 auto; font-size: var(--font-size-sm);">Nenhum secador cadastrado para esta filial.</p>
+      </div>
+    `;
+  }
+
+  if (filterSecador !== 'Todos' && !secadores.includes(filterSecador)) filterSecador = 'Todos';
+
+  const cardsHtml = secadores.map(secador => {
     const op = getActiveOp(secador);
     return `
       <div class="card secador-card" data-secador="${secador}" style="padding: var(--space-4); border-color: var(--color-border); background: var(--color-surface); cursor: pointer; transition: box-shadow var(--transition-fast), border-color var(--transition-fast);">
@@ -84,7 +106,7 @@ export function renderSecagemView() {
         ` : `
           <p style="color: var(--color-text-secondary); font-size: var(--font-size-sm); margin: 0;">Nenhum setup definido para este secador. Clique para configurar e abrir a primeira ordem de produção.</p>
         `}
-        ${canEdit ? `
+        ${canActions ? `
           <div style="margin-top: var(--space-3); text-align: right;">
             <span class="btn btn-secondary btn-sm btn-edit-setup" data-secador="${secador}" style="pointer-events: none;">${op ? 'Alterar Setup' : 'Definir Setup'}</span>
           </div>
@@ -102,9 +124,6 @@ export function renderSecagemView() {
   const rowsHtml = filteredOps.length === 0
     ? `<tr><td colspan="9" style="text-align: center; padding: var(--space-8); color: var(--color-text-secondary);">Nenhuma ordem de produção encontrada.</td></tr>`
     : filteredOps.map(op => {
-        // Toda OP Ativa pode ser excluída manualmente: os apontamentos de secagem
-        // ainda não existem no sistema, então nenhuma OP Ativa tem produção registrada.
-        const podeExcluir = op.status === 'Ativa';
         return `
         <tr>
           <td style="font-weight: 600; color: var(--color-primary);">${op.codigo_op || '-'}</td>
@@ -117,13 +136,7 @@ export function renderSecagemView() {
           <td>
             <span class="badge ${op.status === 'Ativa' ? 'badge-success' : 'badge-neutral'}">${op.status}</span>
           </td>
-          <td style="text-align: right;">
-            ${canEdit && podeExcluir ? `
-              <button class="btn btn-ghost btn-icon btn-delete-secagem-op" data-id="${op.id}" title="Excluir OP (sem apontamentos)">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--color-error);"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-              </button>
-            ` : ''}
-          </td>
+          <td style="font-size: var(--font-size-xs); color: var(--color-text-secondary);">${op.responsavel_nome || '-'}</td>
         </tr>
       `}).join('');
 
@@ -137,7 +150,7 @@ export function renderSecagemView() {
         <div class="toolbar-left" style="display: flex; flex-wrap: wrap; gap: var(--space-2);">
           <select id="secagem-filter-secador" class="filter-select" style="font-size: var(--font-size-sm); height: 34px;">
             <option value="Todos" ${filterSecador === 'Todos' ? 'selected' : ''}>Todos os Secadores</option>
-            ${SECADORES.map(s => `<option value="${s}" ${filterSecador === s ? 'selected' : ''}>${s}</option>`).join('')}
+            ${secadores.map(s => `<option value="${s}" ${filterSecador === s ? 'selected' : ''}>${s}</option>`).join('')}
           </select>
           <select id="secagem-filter-status" class="filter-select" style="font-size: var(--font-size-sm); height: 34px;">
             <option value="Todas" ${filterStatus === 'Todas' ? 'selected' : ''}>Todas as OPs</option>
@@ -166,7 +179,7 @@ export function renderSecagemView() {
                 <th style="font-size: var(--font-size-xs);">Bitola</th>
                 <th style="font-size: var(--font-size-xs);">Turno</th>
                 <th style="font-size: var(--font-size-xs);">Status</th>
-                <th style="width: 60px; text-align: right; font-size: var(--font-size-xs);">Ações</th>
+                <th style="font-size: var(--font-size-xs);">Definido por</th>
               </tr>
             </thead>
             <tbody>
@@ -182,7 +195,11 @@ export function renderSecagemView() {
 export function bindSecagemEvents() {
   document.querySelectorAll('.secador-card').forEach(card => {
     card.addEventListener('click', () => {
-      if (!hasModuleAccess('pcp', 'can_edit') && !hasModuleAccess('pcp', 'can_create')) return;
+      if (!hasModuleAccess('pcp', 'can_actions')) return;
+      if (!SECADOR_CONFIG[card.dataset.secador]) {
+        showToast('As regras de preenchimento deste secador ainda não foram configuradas.', 'warning');
+        return;
+      }
       showSecagemSetupModal(card.dataset.secador);
     });
   });
@@ -214,24 +231,6 @@ export function bindSecagemEvents() {
     });
   }
 
-  document.querySelectorAll('.btn-delete-secagem-op').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const id = btn.dataset.id;
-      const confirmed = await confirmDialog('Excluir OP', 'Tem certeza que deseja excluir esta Ordem de Produção de Secagem? Esta ação é irreversível.');
-      if (!confirmed) return;
-
-      try {
-        const { error } = await supabase.from('pcp_op_secagem').delete().eq('id', id);
-        if (error) throw error;
-        showToast('OP excluída com sucesso', 'success');
-        await fetchSecagemOps(true);
-        window.dispatchEvent(new Event('secagem_changed'));
-      } catch (e) {
-        console.error(e);
-        showToast('Erro ao excluir OP', 'error');
-      }
-    });
-  });
 }
 
 function buildSelectOptions(values, formatter, selectedValue) {
@@ -289,6 +288,19 @@ function showSecagemSetupModal(secador) {
           </select>
         </div>
       </div>
+
+      <div class="form-grid-2" style="margin-top: var(--space-4); border-top: 1px solid var(--color-border); padding-top: var(--space-4);">
+        <div class="form-group">
+          <label class="form-label">Senha (PIN) do Apontador<span class="required">*</span></label>
+          <input type="text" class="form-input" id="sec-pin" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="****" required autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore data-bwignore style="-webkit-text-security: disc; text-security: disc; letter-spacing: 8px; font-weight: 600; text-align: center;" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Responsável</label>
+          <input type="text" class="form-input" id="sec-responsavel" readonly placeholder="Aguardando PIN..." style="background: var(--color-surface-alt);" />
+        </div>
+      </div>
+      <div id="sec-pin-erro" style="color: var(--color-error); font-size: var(--font-size-xs); min-height: 16px;"></div>
+
       ${activeOp ? `
         <div style="margin-top: var(--space-4); background: var(--color-surface-alt); border: 1px solid var(--color-border-light); padding: var(--space-3); border-radius: var(--radius-md); font-size: var(--font-size-xs); color: var(--color-text-secondary);">
           Alterar qualquer parâmetro acima encerrará a OP ativa <strong>${activeOp.codigo_op}</strong> e abrirá uma nova ordem de produção com as especificações atualizadas. Como ela ainda não possui apontamentos registrados, será excluída automaticamente ao invés de arquivada.
@@ -298,7 +310,7 @@ function showSecagemSetupModal(secador) {
   `;
 
   const footerHTML = `
-    <button class="btn btn-primary" id="btn-save-secagem-setup">Salvar Setup</button>
+    <button class="btn btn-primary" id="btn-save-secagem-setup" disabled>Salvar Setup</button>
   `;
 
   openModal(`Setup do Secador ${secador}`, modalBody, footerHTML, { maxWidth: '620px' });
@@ -312,7 +324,52 @@ function showSecagemSetupModal(secador) {
     comprimentoSel.innerHTML = buildSelectOptions(opcoes, fmtDim, opcoes[0]);
   });
 
-  document.getElementById('btn-save-secagem-setup').addEventListener('click', async (e) => {
+  const pinInput = document.getElementById('sec-pin');
+  const respInput = document.getElementById('sec-responsavel');
+  const pinErro = document.getElementById('sec-pin-erro');
+  const btnSave = document.getElementById('btn-save-secagem-setup');
+
+  const limparResponsavel = () => {
+    respInput.value = '';
+    btnSave.disabled = true;
+  };
+
+  pinInput.addEventListener('input', async () => {
+    pinErro.textContent = '';
+    if (pinInput.value.length !== 4) {
+      limparResponsavel();
+      return;
+    }
+
+    pinInput.disabled = true;
+    respInput.value = 'Buscando...';
+    try {
+      // PIN validado no servidor (função validar_pin): o PIN dos apontadores nunca chega ao navegador
+      const { data, error } = await supabase.rpc('validar_pin', { p_pin: pinInput.value });
+      if (error) throw error;
+
+      if (!data || data.length === 0) {
+        pinErro.textContent = 'PIN inválido ou inativo.';
+        pinInput.value = '';
+        limparResponsavel();
+      } else {
+        respInput.value = data[0].nome_completo;
+        btnSave.disabled = false;
+      }
+    } catch (error) {
+      console.error('Error validating PIN:', error);
+      pinErro.textContent = String(error.message).includes('PIN_BLOQUEADO')
+        ? 'Muitas tentativas com PIN errado. Aguarde 5 minutos e tente novamente.'
+        : 'Erro ao validar o PIN. Tente novamente.';
+      pinInput.value = '';
+      limparResponsavel();
+    } finally {
+      pinInput.disabled = false;
+      if (btnSave.disabled) pinInput.focus();
+    }
+  });
+
+  btnSave.addEventListener('click', async (e) => {
     const form = document.getElementById('secagem-setup-form');
     if (!form.checkValidity()) {
       form.reportValidity();
@@ -322,13 +379,17 @@ function showSecagemSetupModal(secador) {
     const btn = e.currentTarget;
     const originalText = btn.innerHTML;
     btn.disabled = true;
+    pinInput.disabled = true;
     btn.innerHTML = `<span class="spinner" style="width: 14px; height: 14px; border-width: 2px; margin-right: 8px;"></span> Salvando...`;
 
+    let falhou = false;
     try {
-      await saveSecagemSetup(secador, activeOp);
+      falhou = !(await saveSecagemSetup(secador, activeOp, pinInput.value, pinErro));
     } finally {
       btn.innerHTML = originalText;
-      btn.disabled = false;
+      pinInput.disabled = false;
+      pinInput.value = '';
+      if (falhou) limparResponsavel();
     }
   });
 }
@@ -337,9 +398,9 @@ function buildSelectOptionsText(values, selectedValue) {
   return values.map(v => `<option value="${v}" ${selectedValue === v ? 'selected' : ''}>${v}</option>`).join('');
 }
 
-async function saveSecagemSetup(secador, activeOp) {
+// Retorna false quando o salvamento falhou e o modal deve continuar aberto (pede o PIN de novo).
+async function saveSecagemSetup(secador, activeOp, pin, pinErro) {
   const payload = {
-    secador,
     tipo: document.getElementById('sec-tipo').value,
     especie: document.getElementById('sec-especie').value,
     largura: parseFloat(document.getElementById('sec-largura').value),
@@ -357,60 +418,42 @@ async function saveSecagemSetup(secador, activeOp) {
     && activeOp.turno === payload.turno) {
     showToast('Nenhuma alteração no setup foi detectada.', 'warning');
     closeModal();
-    return;
+    return true;
   }
 
   try {
-    const bplId = getBPLID();
-
-    if (activeOp) {
-      // Apontamentos de secagem ainda não existem no sistema: toda OP Ativa está
-      // sempre zerada, então a antiga é excluída em vez de arquivada como "Encerrada".
-      // Quando a tabela de apontamentos de secagem for criada, trocar por uma
-      // verificação real (ex.: contagem de registros vinculados a esta OP).
-      const zerada = true;
-      if (zerada) {
-        const { error } = await supabase.from('pcp_op_secagem').delete().eq('id', activeOp.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('pcp_op_secagem')
-          .update({ status: 'Encerrada', encerrada_at: new Date().toISOString() })
-          .eq('id', activeOp.id);
-        if (error) throw error;
-      }
-    }
-
-    const { data: latestOp } = await supabase
-      .from('pcp_op_secagem')
-      .select('codigo_op')
-      .eq('secador', secador)
-      .eq('bpl_id', bplId)
-      .not('codigo_op', 'is', null)
-      .order('created_at', { ascending: false })
-      .limit(1);
-
-    let nextNum = 1;
-    if (latestOp && latestOp.length > 0 && latestOp[0].codigo_op) {
-      const match = latestOp[0].codigo_op.match(/(\d+)$/);
-      if (match) nextNum = parseInt(match[1], 10) + 1;
-    }
-    const codigo_op = `SEC-${secador}-${String(nextNum).padStart(4, '0')}`;
-
-    const { error } = await supabase.from('pcp_op_secagem').insert([{
-      ...payload,
-      codigo_op,
-      bpl_id: bplId,
-      status: 'Ativa'
-    }]);
+    // A função do banco valida o PIN, as regras do secador e troca o setup de forma atômica
+    // (a OP anterior sai e a nova entra na mesma transação: nunca fica sem setup ativo).
+    const { data, error } = await supabase.rpc('salvar_setup_secador', {
+      p_secador: secador,
+      p_pin: pin,
+      p_tipo: payload.tipo,
+      p_especie: payload.especie,
+      p_largura: payload.largura,
+      p_comprimento: payload.comprimento,
+      p_bitola: payload.bitola,
+      p_turno: payload.turno,
+      p_bpl_id: getBPLID()
+    });
     if (error) throw error;
 
-    showToast(`Setup do secador ${secador} atualizado. Nova OP ${codigo_op} aberta.`, 'success');
+    if (!data || data.length === 0) {
+      pinErro.textContent = 'PIN inválido ou inativo.';
+      return false;
+    }
+
+    showToast(`Setup do secador ${secador} atualizado. Nova OP ${data[0].codigo_op} aberta.`, 'success');
     closeModal();
     await fetchSecagemOps(true);
     window.dispatchEvent(new Event('secagem_changed'));
+    return true;
   } catch (error) {
     console.error('Error saving Secagem setup:', error);
-    showToast('Erro ao salvar setup de secagem.', 'error');
+    const msg = String(error.message);
+    if (msg.includes('PIN_BLOQUEADO')) pinErro.textContent = 'Muitas tentativas com PIN errado. Aguarde 5 minutos e tente novamente.';
+    else if (msg.includes('SEM_PERMISSAO')) showToast('Você não tem permissão para alterar o setup dos secadores.', 'error');
+    else if (msg.includes('FILIAL_NAO_PERMITIDA')) showToast('Você não tem acesso a esta filial.', 'error');
+    else showToast('Erro ao salvar setup de secagem.', 'error');
+    return false;
   }
 }

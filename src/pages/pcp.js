@@ -315,7 +315,7 @@ function renderActiveTabView() {
   }
 
   // Active Lâminas Verdes registration view
-  const canCreate = hasModuleAccess('pcp', 'can_create');
+  const canActions = hasModuleAccess('pcp', 'can_actions');
 
   return `
     <!-- Search/Filters toolbar -->
@@ -341,7 +341,7 @@ function renderActiveTabView() {
         </select>
       </div>
       <div class="toolbar-right">
-        ${canCreate ? `
+        ${canActions ? `
           <button class="btn btn-primary btn-sm" id="btn-new-item">
             Novo Item
           </button>
@@ -611,8 +611,7 @@ function renderTableData() {
     return;
   }
 
-  const canEdit = hasModuleAccess('pcp', 'can_edit');
-  const canDelete = hasModuleAccess('pcp', 'can_delete');
+  const canActions = hasModuleAccess('pcp', 'can_actions');
 
   tbody.innerHTML = filteredItems.map(item => {
     const dims = `${item.comp.toFixed(2)} x ${item.larg.toFixed(2)} m`;
@@ -657,12 +656,12 @@ function renderTableData() {
         </td>
         <td>
           <div style="display: flex; justify-content: center; gap: var(--space-1);">
-            ${canEdit ? `
+            ${canActions ? `
               <button class="btn btn-secondary btn-sm btn-icon btn-edit-item" data-id="${item.id}" title="Editar" style="width: 26px; height: 26px;">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
               </button>
             ` : ''}
-            ${canDelete ? `
+            ${canActions ? `
               <button class="btn btn-danger btn-sm btn-icon btn-delete-item" data-id="${item.id}" title="Excluir" style="width: 26px; height: 26px; background: transparent; border: 1px solid var(--color-border); color: var(--color-danger);">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
               </button>

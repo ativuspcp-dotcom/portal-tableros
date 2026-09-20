@@ -221,9 +221,7 @@ function openUserModal(existingUser = null) {
       if (p.modules) {
         userPerms[p.modules.id || p.module_id] = {
           can_view: p.can_view,
-          can_create: p.can_create,
-          can_edit: p.can_edit,
-          can_delete: p.can_delete,
+          can_actions: p.can_actions,
         };
       }
     });
@@ -290,9 +288,7 @@ function openUserModal(existingUser = null) {
         <div class="permission-header">
           <span></span>
           <span>Ver</span>
-          <span>Criar</span>
-          <span>Editar</span>
-          <span>Excluir</span>
+          <span>Ações</span>
         </div>
         <div class="permission-grid">
           ${allModules.filter(m => m.slug !== 'admin' && m.type !== 'app').map(mod => {
@@ -302,7 +298,7 @@ function openUserModal(existingUser = null) {
                 <div class="permission-module-name">
                   <span class="badge ${getModuleBadgeClass(mod.slug)}" style="padding:2px 8px;">${mod.name}</span>
                 </div>
-                ${['can_view', 'can_create', 'can_edit', 'can_delete'].map(perm => `
+                ${['can_view', 'can_actions'].map(perm => `
                   <div class="permission-check">
                     <div class="checkbox-wrapper">
                       <input type="checkbox" data-module="${mod.id}" data-perm="${perm}" ${perms[perm] ? 'checked' : ''} />
@@ -328,9 +324,7 @@ function openUserModal(existingUser = null) {
                 <div class="permission-header">
                   <span></span>
                   <span>Ver</span>
-                  <span>Criar</span>
-                  <span>Editar</span>
-                  <span>Excluir</span>
+                  <span>Ações</span>
                 </div>
                 <div class="permission-grid">
                   ${groupMods.map(mod => {
@@ -340,7 +334,7 @@ function openUserModal(existingUser = null) {
                         <div class="permission-module-name">
                           <span class="badge" style="background: var(--color-background-alt); color: var(--color-text); padding:2px 8px; border: 1px solid var(--color-border);">${mod.name}</span>
                         </div>
-                        ${['can_view', 'can_create', 'can_edit', 'can_delete'].map(perm => `
+                        ${['can_view', 'can_actions'].map(perm => `
                           <div class="permission-check">
                             <div class="checkbox-wrapper">
                               <input type="checkbox" data-module="${mod.id}" data-perm="${perm}" ${perms[perm] ? 'checked' : ''} />
@@ -398,6 +392,15 @@ function openUserModal(existingUser = null) {
 
   roleSelect.addEventListener('change', togglePermissions);
   togglePermissions();
+
+  // "Ações" pressupõe "Ver": marcar Ações marca Ver, desmarcar Ver desmarca Ações
+  document.querySelectorAll('.permission-module').forEach(row => {
+    const ver = row.querySelector('input[data-perm="can_view"]');
+    const acoes = row.querySelector('input[data-perm="can_actions"]');
+    if (!ver || !acoes) return;
+    ver.addEventListener('change', () => { if (!ver.checked) acoes.checked = false; });
+    acoes.addEventListener('change', () => { if (acoes.checked) ver.checked = true; });
+  });
 }
 
 async function handleSaveUser(existingUser) {
@@ -494,7 +497,9 @@ async function handleSaveUser(existingUser) {
         department: department || null,
         job_title: jobTitle || null,
         filiais_permitidas: filiaisPermitidas,
-        module_permissions: modulePermissions,
+        // Espelha nos campos antigos porque a edge function create-user ainda grava can_create/can_edit/can_delete
+        // (o banco converte para can_actions). Remover junto com a fase 2 (ver DESAFIOS.md).
+        module_permissions: modulePermissions.map(p => ({ ...p, can_create: p.can_actions, can_edit: p.can_actions, can_delete: p.can_actions })),
       });
 
       showToast('Usuário criado com sucesso!', 'success');
