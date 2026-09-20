@@ -497,9 +497,7 @@ async function handleSaveUser(existingUser) {
         department: department || null,
         job_title: jobTitle || null,
         filiais_permitidas: filiaisPermitidas,
-        // Espelha nos campos antigos porque a edge function create-user ainda grava can_create/can_edit/can_delete
-        // (o banco converte para can_actions). Remover junto com a fase 2 (ver DESAFIOS.md).
-        module_permissions: modulePermissions.map(p => ({ ...p, can_create: p.can_actions, can_edit: p.can_actions, can_delete: p.can_actions })),
+        module_permissions: modulePermissions,
       });
 
       showToast('Usuário criado com sucesso!', 'success');

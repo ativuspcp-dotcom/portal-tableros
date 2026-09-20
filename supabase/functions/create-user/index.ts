@@ -151,9 +151,7 @@ serve(async (req) => {
         user_id: newUserId,
         module_id: p.module_id,
         can_view: p.can_view || false,
-        can_create: p.can_create || false,
-        can_edit: p.can_edit || false,
-        can_delete: p.can_delete || false,
+        can_actions: p.can_actions || false,
         granted_by: callerId
       }))
 
