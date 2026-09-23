@@ -171,6 +171,8 @@ export async function renderPCP(container = document.getElementById('view-pcp') 
 
   if (activeMainTab === 'cadastro' && activeSubTab === 'lamina_verde') {
     fetchGreenVeneerItems();
+  } else if (activeMainTab === 'cadastro' && activeSubTab === 'lamina_seca') {
+    fetchLaminasSecasSAP();
   } else if (activeMainTab === 'cadastro' && activeSubTab === 'compensado_acabado') {
     fetchCompensadosAcabadosSAP();
   } else if (activeMainTab === 'op' && activeOpSubTab === 'amarracao') {
@@ -276,8 +278,57 @@ function renderActiveTabView() {
   }
 
   // Under items registration, check sub-tabs
-  if (activeSubTab === 'lamina_seca' || activeSubTab === 'compensado_inacabado') {
-    let subTitle = activeSubTab === 'lamina_seca' ? 'Lâminas Secas' : 'Compensados Inacabados';
+  if (activeSubTab === 'lamina_seca') {
+    return `
+      <!-- Search/Filters toolbar -->
+      <div class="toolbar" style="margin-bottom: var(--space-4); display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; justify-content: space-between;">
+        <div class="toolbar-left" style="display: flex; flex-wrap: wrap; gap: var(--space-2); flex: 1;">
+          <div class="search-bar" style="max-width: 260px; flex: 1;">
+            <span class="search-icon">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            </span>
+            <input type="text" id="ls-search" placeholder="Pesquisar por item ou descrição..." style="font-size: var(--font-size-sm);" />
+          </div>
+        </div>
+        <div class="toolbar-right">
+          <span style="font-size: var(--font-size-xs); color: var(--color-text-secondary); display: flex; align-items: center; gap: 4px;">
+            <span style="display: inline-block; width: 8px; height: 8px; background: #569650; border-radius: 50%;"></span>
+            Integração Ativa (SAP B1)
+          </span>
+        </div>
+      </div>
+
+      <!-- Items Table -->
+      <div class="card" style="padding: 0; overflow: hidden; border-color: var(--color-border); background: var(--color-surface);">
+        <div class="table-wrapper">
+          <table class="table">
+            <thead>
+              <tr>
+                <th style="font-size: var(--font-size-xs);">Cód. Item</th>
+                <th style="font-size: var(--font-size-xs);">Descrição (ItemName)</th>
+                <th style="font-size: var(--font-size-xs);">Descrição Estrangeira</th>
+                <th style="font-size: var(--font-size-xs);">Classe</th>
+                <th style="font-size: var(--font-size-xs);">Qualidade</th>
+                <th style="font-size: var(--font-size-xs);">Dimensões (C x L)</th>
+                <th style="font-size: var(--font-size-xs);">Bitola/Espessura</th>
+                <th style="font-size: var(--font-size-xs);">Peças/Fardo</th>
+              </tr>
+            </thead>
+            <tbody id="ls-table-body" style="font-size: var(--font-size-sm);">
+              <tr>
+                <td colspan="8" style="padding: var(--space-8); text-align: center; color: var(--color-text-secondary);">
+                  Carregando registros do SAP B1...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+
+  if (activeSubTab === 'compensado_inacabado') {
+    let subTitle = 'Compensados Inacabados';
 
     return `
       <div class="card" style="text-align: center; padding: var(--space-12); border-color: var(--color-border); background: var(--color-surface);">
@@ -474,12 +525,108 @@ function bindPCPEvents() {
         showPCPModal();
       });
     }
+  } else if (activeSubTab === 'lamina_seca') {
+    const searchInput = document.getElementById('ls-search');
+    if (searchInput) {
+      searchInput.addEventListener('input', applyFiltersLaminaSeca);
+    }
   } else if (activeSubTab === 'compensado_acabado') {
     const searchInput = document.getElementById('fc-search');
     if (searchInput) {
       searchInput.addEventListener('input', applyFiltersSAP);
     }
   }
+}
+
+let laminaSecaItems = [];
+let laminaSecaFilteredItems = [];
+
+const LAMINA_SECA_CLASS_MAP = { '601': 'CAPA', '602': 'ENCHIMENTO', '603': 'MIOLO' };
+const LAMINA_SECA_QUALITY_MAP = { '601': 'A', '602': 'B', '603': 'C', '604': 'CP', '605': 'D', '606': 'L', '607': 'G', '608': 'CASCA' };
+
+async function fetchLaminasSecasSAP() {
+  try {
+    const url = "https://tableros.ngrok.app/Items?$select=ItemCode,ItemName,ForeignName,ItemsGroupCode,SalesFactor1,SalesFactor2,SalesFactor3,SalesFactor4,U_Quality,U_Class&$filter=ItemsGroupCode eq 145 and Properties1 eq 'tYES'";
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'ngrok-skip-browser-warning': 'true',
+        'Prefer': 'odata.maxpagesize=0'
+      }
+    });
+
+    if (!res.ok) {
+      throw new Error('Error fetching SAP items: ' + res.statusText);
+    }
+
+    const data = await res.json();
+    laminaSecaItems = data.value || [];
+
+    laminaSecaItems.sort((a, b) => {
+      const nameA = a.ItemName || '';
+      const nameB = b.ItemName || '';
+      return nameA.localeCompare(nameB, 'pt-BR');
+    });
+
+    laminaSecaFilteredItems = laminaSecaItems;
+    renderLaminaSecaTableData();
+  } catch (error) {
+    console.error('Network error fetching SAP items:', error);
+    showToast('Falha na conexão com o SAP B1.', 'error');
+    document.getElementById('ls-table-body').innerHTML = `<tr><td colspan="8" style="text-align:center; padding: 20px; color: red;">Falha na conexão com o SAP B1.</td></tr>`;
+  }
+}
+
+function applyFiltersLaminaSeca() {
+  const query = (document.getElementById('ls-search')?.value || '').trim().toLowerCase();
+  if (!query) {
+    laminaSecaFilteredItems = laminaSecaItems;
+  } else {
+    laminaSecaFilteredItems = laminaSecaItems.filter(item =>
+      (item.ItemCode && item.ItemCode.toLowerCase().includes(query)) ||
+      (item.ItemName && item.ItemName.toLowerCase().includes(query)) ||
+      (item.ForeignName && item.ForeignName.toLowerCase().includes(query))
+    );
+  }
+  renderLaminaSecaTableData();
+}
+
+function renderLaminaSecaTableData() {
+  const tbody = document.getElementById('ls-table-body');
+  if (!tbody) return;
+
+  if (laminaSecaFilteredItems.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="8" style="padding: var(--space-8); text-align: center; color: var(--color-text-secondary);">
+          Nenhum registro encontrado.
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  tbody.innerHTML = laminaSecaFilteredItems.map(item => {
+    const comp = item.SalesFactor1 || '-';
+    const larg = item.SalesFactor2 || '-';
+    const dims = comp !== '-' && larg !== '-' ? `${comp} x ${larg}` : '-';
+    const classe = LAMINA_SECA_CLASS_MAP[item.U_Class] || item.U_Class || '-';
+    const qual = LAMINA_SECA_QUALITY_MAP[item.U_Quality] || item.U_Quality || '-';
+
+    return `
+      <tr>
+        <td style="font-family: monospace; font-weight: var(--font-weight-semibold); color: var(--color-text);">${item.ItemCode}</td>
+        <td style="font-weight: var(--font-weight-medium); color: var(--color-text);">${item.ItemName || '-'}</td>
+        <td style="font-size: var(--font-size-xs); color: var(--color-text-secondary);">${item.ForeignName || '-'}</td>
+        <td><span class="badge" style="background: var(--color-surface-alt); border: 1px solid var(--color-border); color: var(--color-text);">${classe}</span></td>
+        <td><span class="badge" style="background: var(--color-surface-alt); color: var(--color-text-secondary);">${qual}</span></td>
+        <td>${dims}</td>
+        <td><span style="font-weight: var(--font-weight-semibold); color: var(--color-text);">${item.SalesFactor3 || '-'}</span></td>
+        <td style="font-size: var(--font-size-xs); color: var(--color-text-secondary);">${item.SalesFactor4 || '-'}</td>
+      </tr>
+    `;
+  }).join('');
 }
 
 let sapItems = [];
