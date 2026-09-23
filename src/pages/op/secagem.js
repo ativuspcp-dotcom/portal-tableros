@@ -8,20 +8,22 @@ const TURNOS = ['00:00 - 06:00', '06:00 - 12:00', '12:00 - 18:00', '18:00 - 00:0
 
 // Regras de preenchimento por secador (por nome). Também existem na função do banco
 // salvar_setup_secador e no app-operacional (CONFIG em setup-secadores.js): alterar nos 3 lugares.
+// FEZER: Comprimento fixo, Largura variável. OMECO: Comprimento variável, Largura condicional
+// ao Comprimento escolhido (corrigido em 2026-09-23 — estava com os dois nomes trocados).
 const SECADOR_CONFIG = {
   FEZER: {
     tipos: ['PRODUÇÃO', 'RESSEQUE'],
     especies: ['PINUS', 'EUCALIPTO'],
-    larguras: [2.6],
-    comprimentosFor: () => [1.3, 0.87],
+    comprimentos: [2.6],
+    largurasFor: () => [1.3, 0.87],
     bitolas: [1.5, 1.8, 2.0, 2.2, 2.5, 2.7, 3.1, 3.3],
     turnos: TURNOS
   },
   OMECO: {
     tipos: ['PRODUÇÃO', 'RESSEQUE'],
     especies: ['PINUS', 'EUCALIPTO'],
-    larguras: [2.6, 1.3],
-    comprimentosFor: (largura) => (largura === 2.6 ? [1.3, 0.87] : [0.87]),
+    comprimentos: [2.6, 1.3],
+    largurasFor: (comprimento) => (comprimento === 2.6 ? [1.3, 0.87] : [0.87]),
     bitolas: [1.5, 1.8, 2.0, 2.2, 2.5, 2.7, 3.1, 3.3],
     turnos: TURNOS
   }
@@ -237,12 +239,21 @@ function buildSelectOptions(values, formatter, selectedValue) {
   return values.map(v => `<option value="${v}" ${selectedValue !== undefined && Number(selectedValue) === Number(v) ? 'selected' : ''}>${formatter(v)}</option>`).join('');
 }
 
-function showSecagemSetupModal(secador) {
+async function showSecagemSetupModal(secador) {
   const config = SECADOR_CONFIG[secador];
   const activeOp = getActiveOp(secador);
 
-  const larguraInicial = activeOp ? Number(activeOp.largura) : config.larguras[0];
-  const comprimentosDisponiveis = config.comprimentosFor(larguraInicial);
+  let temApontamentos = false;
+  if (activeOp) {
+    const { count } = await supabase
+      .from('secagem_apontamentos')
+      .select('id', { count: 'exact', head: true })
+      .eq('op_id', activeOp.id);
+    temApontamentos = (count || 0) > 0;
+  }
+
+  const comprimentoInicial = activeOp ? Number(activeOp.comprimento) : config.comprimentos[0];
+  const largurasDisponiveis = config.largurasFor(comprimentoInicial);
 
   const modalBody = `
     <form id="secagem-setup-form" class="modal-form" style="font-size: var(--font-size-sm);">
@@ -262,15 +273,15 @@ function showSecagemSetupModal(secador) {
           </select>
         </div>
         <div class="form-group">
-          <label class="form-label">Largura (m)<span class="required">*</span></label>
-          <select class="form-select" id="sec-largura" required>
-            ${buildSelectOptions(config.larguras, fmtDim, larguraInicial)}
+          <label class="form-label">Comprimento (m)<span class="required">*</span></label>
+          <select class="form-select" id="sec-comprimento" required>
+            ${buildSelectOptions(config.comprimentos, fmtDim, comprimentoInicial)}
           </select>
         </div>
         <div class="form-group">
-          <label class="form-label">Comprimento (m)<span class="required">*</span></label>
-          <select class="form-select" id="sec-comprimento" required>
-            ${buildSelectOptions(comprimentosDisponiveis, fmtDim, activeOp ? Number(activeOp.comprimento) : undefined)}
+          <label class="form-label">Largura (m)<span class="required">*</span></label>
+          <select class="form-select" id="sec-largura" required>
+            ${buildSelectOptions(largurasDisponiveis, fmtDim, activeOp ? Number(activeOp.largura) : undefined)}
           </select>
         </div>
         <div class="form-group">
@@ -303,7 +314,8 @@ function showSecagemSetupModal(secador) {
 
       ${activeOp ? `
         <div style="margin-top: var(--space-4); background: var(--color-surface-alt); border: 1px solid var(--color-border-light); padding: var(--space-3); border-radius: var(--radius-md); font-size: var(--font-size-xs); color: var(--color-text-secondary);">
-          Alterar qualquer parâmetro acima encerrará a OP ativa <strong>${activeOp.codigo_op}</strong> e abrirá uma nova ordem de produção com as especificações atualizadas. Como ela ainda não possui apontamentos registrados, será excluída automaticamente ao invés de arquivada.
+          Alterar qualquer parâmetro acima encerrará a OP ativa <strong>${activeOp.codigo_op}</strong> e abrirá uma nova ordem de produção com as especificações atualizadas.
+          ${temApontamentos ? ' Como ela já possui apontamentos registrados, ficará arquivada como "Encerrada" no histórico.' : ' Como ela ainda não possui apontamentos registrados, será excluída automaticamente ao invés de arquivada.'}
         </div>
       ` : ''}
     </form>
@@ -315,13 +327,13 @@ function showSecagemSetupModal(secador) {
 
   openModal(`Setup do Secador ${secador}`, modalBody, footerHTML, { maxWidth: '620px' });
 
-  const larguraSel = document.getElementById('sec-largura');
   const comprimentoSel = document.getElementById('sec-comprimento');
+  const larguraSel = document.getElementById('sec-largura');
 
-  larguraSel.addEventListener('change', () => {
-    const largura = parseFloat(larguraSel.value);
-    const opcoes = config.comprimentosFor(largura);
-    comprimentoSel.innerHTML = buildSelectOptions(opcoes, fmtDim, opcoes[0]);
+  comprimentoSel.addEventListener('change', () => {
+    const comprimento = parseFloat(comprimentoSel.value);
+    const opcoes = config.largurasFor(comprimento);
+    larguraSel.innerHTML = buildSelectOptions(opcoes, fmtDim, opcoes[0]);
   });
 
   const pinInput = document.getElementById('sec-pin');

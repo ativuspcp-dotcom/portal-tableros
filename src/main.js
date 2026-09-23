@@ -13,6 +13,7 @@ import { renderExpedicao } from './pages/expedicao.js';
 import { renderPCP } from './pages/pcp.js';
 import { renderApontadores } from './pages/apontadores.js';
 import { renderSeguranca } from './pages/seguranca.js';
+import { renderConfiguracoes } from './pages/configuracoes.js';
 
 console.log('Portal Tableros: Main entry loaded.');
 
@@ -26,6 +27,7 @@ route('/expedicao', renderExpedicao);
 route('/pcp', renderPCP);
 route('/apontadores', renderApontadores);
 route('/seguranca', renderSeguranca);
+route('/configuracoes', renderConfiguracoes);
 
 // Set navigation guards
 setBeforeNavigate(async (path) => {
@@ -62,7 +64,7 @@ setBeforeNavigate(async (path) => {
   }
 
   // 4. Permission checks for specific routes
-  if (path === '/users' || path === '/apontadores') {
+  if (path === '/users' || path === '/apontadores' || path === '/configuracoes') {
     if (!canManageUsers()) {
       navigate('/dashboard');
       return false;

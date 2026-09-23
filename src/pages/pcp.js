@@ -8,6 +8,7 @@ import { fetchAmarracaoOps, renderAmarracaoView, bindAmarracaoEvents } from './o
 import { fetchSecagemOps, renderSecagemView, bindSecagemEvents } from './op/secagem.js';
 import { fetchEstoqueCompAcabado, renderEstoqueCompAcabadoView, renderEstoqueDashboard, bindEstoqueCompAcabadoEvents } from './estoque/comp-acabado.js';
 import { fetchAmarracoesProducao, renderAmarracoesProducaoView, bindAmarracoesProducaoEvents } from './producao/amarracoes.js';
+import { fetchSecagemProducao, renderSecagemProducaoView, bindSecagemProducaoEvents } from './producao/secagem.js';
 
 window.addEventListener('amarracao_created', () => {
   if (activeMainTab === 'op' && activeOpSubTab === 'amarracao') {
@@ -26,6 +27,13 @@ window.addEventListener('amarracoes_producao_changed', () => {
   if (activeMainTab === 'producao' && activeSubTab === 'amarracoes') {
     document.getElementById('pcp-tab-content').innerHTML = renderActiveTabView();
     bindAmarracoesProducaoEvents();
+  }
+});
+
+window.addEventListener('secagem_producao_changed', () => {
+  if (activeMainTab === 'producao' && activeSubTab === 'secagem') {
+    document.getElementById('pcp-tab-content').innerHTML = renderActiveTabView();
+    bindSecagemProducaoEvents();
   }
 });
 
@@ -121,9 +129,13 @@ export async function renderPCP(container = document.getElementById('view-pcp') 
             </div>
           ` : activeMainTab === 'producao' ? `
             <div class="pcp-sub-tabs" style="display: flex; gap: var(--space-4); margin-bottom: var(--space-4); border-bottom: 1px solid var(--color-border-light); padding-bottom: var(--space-2); padding-left: var(--space-2);">
-              <button class="pcp-sub-tab-btn ${activeSubTab === 'amarracoes' || !activeSubTab.startsWith('estoque_') && activeSubTab !== 'lamina_verde' && activeSubTab !== 'lamina_seca' && activeSubTab !== 'compensado_inacabado' && activeSubTab !== 'compensado_acabado' ? 'active' : ''}" data-subtab="amarracoes" 
-                style="font-size: var(--font-size-sm); font-weight: ${activeSubTab === 'amarracoes' || !activeSubTab.startsWith('estoque_') && activeSubTab !== 'lamina_verde' && activeSubTab !== 'lamina_seca' && activeSubTab !== 'compensado_inacabado' && activeSubTab !== 'compensado_acabado' ? '600' : '400'}; color: ${activeSubTab === 'amarracoes' || !activeSubTab.startsWith('estoque_') && activeSubTab !== 'lamina_verde' && activeSubTab !== 'lamina_seca' && activeSubTab !== 'compensado_inacabado' && activeSubTab !== 'compensado_acabado' ? 'var(--color-primary)' : 'var(--color-text-secondary)'}; border: none; background: transparent; border-bottom: 2px solid ${activeSubTab === 'amarracoes' || !activeSubTab.startsWith('estoque_') && activeSubTab !== 'lamina_verde' && activeSubTab !== 'lamina_seca' && activeSubTab !== 'compensado_inacabado' && activeSubTab !== 'compensado_acabado' ? 'var(--color-primary)' : 'transparent'}; padding-bottom: 4px; transition: all var(--transition-fast);">
+              <button class="pcp-sub-tab-btn ${activeSubTab === 'amarracoes' ? 'active' : ''}" data-subtab="amarracoes"
+                style="font-size: var(--font-size-sm); font-weight: ${activeSubTab === 'amarracoes' ? '600' : '400'}; color: ${activeSubTab === 'amarracoes' ? 'var(--color-primary)' : 'var(--color-text-secondary)'}; border: none; background: transparent; border-bottom: 2px solid ${activeSubTab === 'amarracoes' ? 'var(--color-primary)' : 'transparent'}; padding-bottom: 4px; transition: all var(--transition-fast);">
                 Amarração
+              </button>
+              <button class="pcp-sub-tab-btn ${activeSubTab === 'secagem' ? 'active' : ''}" data-subtab="secagem"
+                style="font-size: var(--font-size-sm); font-weight: ${activeSubTab === 'secagem' ? '600' : '400'}; color: ${activeSubTab === 'secagem' ? 'var(--color-primary)' : 'var(--color-text-secondary)'}; border: none; background: transparent; border-bottom: 2px solid ${activeSubTab === 'secagem' ? 'var(--color-primary)' : 'transparent'}; padding-bottom: 4px; transition: all var(--transition-fast);">
+                Secagem
               </button>
             </div>
           ` : activeMainTab === 'op' ? `
@@ -193,14 +205,24 @@ export async function renderPCP(container = document.getElementById('view-pcp') 
         renderEstoqueDashboard();
       }
     });
-  } else if (activeMainTab === 'producao' && (activeSubTab === 'amarracoes' || !activeSubTab.startsWith('estoque_'))) {
+  } else if (activeMainTab === 'producao' && activeSubTab === 'amarracoes') {
     document.getElementById('pcp-tab-content').innerHTML = renderActiveTabView();
     bindAmarracoesProducaoEvents();
-    
+
     fetchAmarracoesProducao().then(() => {
-      if (activeMainTab === 'producao') {
+      if (activeMainTab === 'producao' && activeSubTab === 'amarracoes') {
         document.getElementById('pcp-tab-content').innerHTML = renderActiveTabView();
         bindAmarracoesProducaoEvents();
+      }
+    });
+  } else if (activeMainTab === 'producao' && activeSubTab === 'secagem') {
+    document.getElementById('pcp-tab-content').innerHTML = renderActiveTabView();
+    bindSecagemProducaoEvents();
+
+    fetchSecagemProducao().then(() => {
+      if (activeMainTab === 'producao' && activeSubTab === 'secagem') {
+        document.getElementById('pcp-tab-content').innerHTML = renderActiveTabView();
+        bindSecagemProducaoEvents();
       }
     });
   }
@@ -216,9 +238,8 @@ function renderActiveTabView() {
   }
   
   if (activeMainTab === 'producao') {
-    if (activeSubTab === 'amarracoes' || (!activeSubTab.startsWith('estoque_') && activeSubTab !== 'lamina_verde' && activeSubTab !== 'lamina_seca' && activeSubTab !== 'compensado_inacabado' && activeSubTab !== 'compensado_acabado')) {
-      return renderAmarracoesProducaoView();
-    }
+    if (activeSubTab === 'secagem') return renderSecagemProducaoView();
+    return renderAmarracoesProducaoView();
   }
 
   // If not in items registration tab
