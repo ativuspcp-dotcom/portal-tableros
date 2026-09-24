@@ -3,7 +3,6 @@ import { renderSidebar, bindSidebarEvents } from '../components/sidebar.js';
 import { renderHeader } from '../components/header.js';
 import { confirmDialog } from '../components/modal.js';
 import { showToast } from '../components/toast.js';
-import { SECADOR_CONFIG } from './op/secagem.js';
 
 // Estrutura pensada para crescer: um menu principal por módulo (hoje só PCP) e sub-menus dentro
 // dele (hoje só Secagem). Adicionar um novo módulo/tela de configuração é só um novo item aqui.
@@ -21,7 +20,9 @@ let activeMainTab = sessionStorage.getItem('configActiveMainTab') || 'pcp';
 let activePcpSubTab = sessionStorage.getItem('configActivePcpSubTab') || 'secagem';
 
 let regrasCubagem = [];
-let selectedSecador = Object.keys(SECADOR_CONFIG)[0];
+let medidasSetup = [];
+let secadoresCadastrados = [];
+let selectedSecador = null;
 let selectedComboKey = null;
 let editingId = null;
 let regrasCarregadas = false;
@@ -82,6 +83,9 @@ export async function renderConfiguracoes(container = document.getElementById('v
   bindTabEvents();
 
   if (activeMainTab === 'pcp' && activePcpSubTab === 'secagem') {
+    // Sequencial de propósito: não usar Promise.all em várias chamadas supabase.from()
+    await fetchSecadoresCadastrados();
+    await fetchMedidasSetup();
     await fetchRegrasCubagem();
     refreshView();
   }
@@ -142,21 +146,57 @@ async function fetchRegrasCubagem() {
   }
 }
 
-/** Secadores conhecidos (regras de preenchimento do setup + qualquer um que já tenha regra gravada). */
-function secadoresConhecidos() {
-  return [...new Set([...Object.keys(SECADOR_CONFIG), ...regrasCubagem.map(r => r.secador)])];
+async function fetchMedidasSetup() {
+  try {
+    const { data, error } = await supabase
+      .from('pcp_secagem_setup_medidas')
+      .select('*')
+      .order('secador')
+      .order('comprimento', { ascending: false })
+      .order('largura', { ascending: false });
+
+    if (error) throw error;
+    medidasSetup = data || [];
+  } catch (error) {
+    console.error('Error fetching medidas de setup:', error);
+    showToast('Erro ao carregar medidas de setup da secagem', 'error');
+  }
 }
 
-/** Medidas de setup válidas do secador (vindas do SECADOR_CONFIG) + medidas que já tenham regra no banco. */
-function combosFor(secador) {
-  const cfg = SECADOR_CONFIG[secador];
-  const map = new Map();
-  if (cfg) {
-    cfg.comprimentos.forEach(c => cfg.largurasFor(c).forEach(l => map.set(comboKey(c, l), { comprimento: c, largura: l })));
+async function fetchSecadoresCadastrados() {
+  try {
+    const { data, error } = await supabase
+      .from('pcp_secadores')
+      .select('nome')
+      .eq('ativo', true)
+      .order('nome');
+
+    if (error) throw error;
+    secadoresCadastrados = [...new Set((data || []).map(s => s.nome))];
+  } catch (error) {
+    console.error('Error fetching secadores:', error);
+    showToast('Erro ao carregar secadores', 'error');
   }
+}
+
+/** Secadores cadastrados (qualquer filial) + qualquer um que já tenha medida ou regra gravada. */
+function secadoresConhecidos() {
+  return [...new Set([
+    ...secadoresCadastrados,
+    ...medidasSetup.map(m => m.secador),
+    ...regrasCubagem.map(r => r.secador)
+  ])].sort();
+}
+
+/** Medidas de setup do secador (tabela pcp_secagem_setup_medidas) + medidas que só tenham regra no banco. */
+function combosFor(secador) {
+  const map = new Map();
+  medidasSetup.filter(m => m.secador === secador).forEach(m => {
+    map.set(comboKey(m.comprimento, m.largura), { comprimento: Number(m.comprimento), largura: Number(m.largura), ativo: m.ativo });
+  });
   regrasCubagem.filter(r => r.secador === secador).forEach(r => {
     const key = comboKey(r.comprimento_setup, r.largura_setup);
-    if (!map.has(key)) map.set(key, { comprimento: Number(r.comprimento_setup), largura: Number(r.largura_setup) });
+    if (!map.has(key)) map.set(key, { comprimento: Number(r.comprimento_setup), largura: Number(r.largura_setup), ativo: false });
   });
   return [...map.entries()].map(([key, v]) => ({
     key,
@@ -194,6 +234,9 @@ function renderSecagemConfig() {
   }
 
   const secadores = secadoresConhecidos();
+  if (secadores.length === 0) {
+    return `<div style="padding: var(--space-8); text-align: center; color: var(--color-text-secondary);">Nenhum secador cadastrado.</div>`;
+  }
   if (!secadores.includes(selectedSecador)) selectedSecador = secadores[0];
 
   const combos = combosFor(selectedSecador);
@@ -211,9 +254,25 @@ function renderSecagemConfig() {
   const comboBtns = combos.map(c => `
     <button type="button" class="btn btn-sm ${c.key === selectedComboKey ? 'btn-primary' : 'btn-secondary'} cfg-combo-btn" data-combo="${c.key}">
       ${fmtDim(c.comprimento)} × ${fmtDim(c.largura)}
-      <span style="opacity: 0.75; font-weight: 400; margin-left: 4px;">· ${c.count === 0 ? 'sem regras' : c.count}</span>
+      <span style="opacity: 0.75; font-weight: 400; margin-left: 4px;">· ${c.count === 0 ? 'sem regras' : c.count}${c.ativo ? '' : ' · inativa'}</span>
     </button>
   `).join('');
+
+  const medidasDoSecador = medidasSetup.filter(m => m.secador === selectedSecador);
+  const medidaRow = (m) => `
+    <tr>
+      <td style="${CELL} font-weight: 600; color: var(--color-text);">${fmtDim(m.comprimento)} m</td>
+      <td style="${CELL} font-weight: 600; color: var(--color-text);">${fmtDim(m.largura)} m</td>
+      <td style="${CELL}"><span class="badge ${m.ativo ? 'badge-success' : 'badge-neutral'}">${m.ativo ? 'Ativa' : 'Inativa'}</span></td>
+      <td style="${CELL} text-align: right; white-space: nowrap;">
+        <button class="btn btn-ghost btn-sm cfg-medida-toggle" data-id="${m.id}" data-ativo="${m.ativo}" style="height: 26px;">${m.ativo ? 'Desativar' : 'Ativar'}</button>
+        <button class="btn btn-ghost btn-icon cfg-medida-delete" data-id="${m.id}" data-label="${fmtDim(m.comprimento)} × ${fmtDim(m.largura)}" title="Excluir" style="width: 26px; height: 26px;">${ICON_DELETE}</button>
+      </td>
+    </tr>
+  `;
+  const medidasRowsHtml = medidasDoSecador.length === 0
+    ? `<tr><td colspan="4" style="padding: var(--space-4); text-align: center; color: var(--color-text-secondary); font-size: var(--font-size-sm);">Nenhuma medida cadastrada para este secador. Adicione a primeira abaixo.</td></tr>`
+    : medidasDoSecador.map(medidaRow).join('');
 
   const viewRow = (r) => `
     <tr>
@@ -245,17 +304,54 @@ function renderSecagemConfig() {
 
   return `
     <div style="max-width: 1000px; margin: 0 auto; width: 100%;">
-      <div style="margin-bottom: var(--space-4);">
+      <div class="card" style="padding: var(--space-3) var(--space-4); margin-bottom: var(--space-6); border-color: var(--color-border); background: var(--color-surface); display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap;">
+        <span style="font-size: var(--font-size-xs); font-weight: 600; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Secador</span>
+        ${secadorBtns}
+      </div>
+
+      <div style="margin-bottom: var(--space-3);">
+        <h3 style="font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); color: var(--color-text); margin: 0;">Medidas do setup</h3>
+        <p style="font-size: var(--font-size-sm); color: var(--color-text-secondary); margin: 4px 0 0;">Combinações de comprimento × largura que o apontador pode escolher ao definir o setup do secador ${esc(selectedSecador)}. Desativar tira a medida das telas de setup sem apagar o histórico.</p>
+      </div>
+
+      <div class="card" style="padding: 0; overflow: hidden; border-color: var(--color-border); background: var(--color-surface); margin-bottom: var(--space-2);">
+        <div class="table-container">
+          <table class="table">
+            <thead>
+              <tr>
+                <th style="font-size: var(--font-size-xs); padding: 6px 8px;">Comprimento (m)</th>
+                <th style="font-size: var(--font-size-xs); padding: 6px 8px;">Largura (m)</th>
+                <th style="font-size: var(--font-size-xs); padding: 6px 8px;">Situação</th>
+                <th style="width: 170px; padding: 6px 8px;"></th>
+              </tr>
+            </thead>
+            <tbody>
+              ${medidasRowsHtml}
+              <tr style="background: var(--color-surface-alt); border-top: 2px solid var(--color-border);">
+                <td style="${CELL}"><input type="text" id="nm-comp" class="form-input" inputmode="decimal" placeholder="Ex.: 2,6" style="${INPUT_STYLE} width: 100px;" /></td>
+                <td style="${CELL}"><input type="text" id="nm-larg" class="form-input" inputmode="decimal" placeholder="Ex.: 1,3" style="${INPUT_STYLE} width: 100px;" /></td>
+                <td style="${CELL}"></td>
+                <td style="${CELL} text-align: right;">
+                  <button class="btn btn-primary btn-sm" id="cfg-medida-add" style="height: 30px;">Adicionar</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <p style="font-size: var(--font-size-xs); color: var(--color-text-secondary); margin: 0 0 var(--space-6);">
+        Digite em <strong>metros</strong>, com vírgula ou ponto (ex.: <em>2,6</em> e <em>1,3</em>; nunca 2600). Uma medida nova aparece em Regras de apontamento, logo abaixo, para você cadastrar as opções dela. Não dá para excluir uma medida que ainda tem regras: desative-a ou apague as regras antes.
+      </p>
+
+      <div style="margin-bottom: var(--space-3);">
         <h3 style="font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); color: var(--color-text); margin: 0;">Regras de apontamento</h3>
         <p style="font-size: var(--font-size-sm); color: var(--color-text-secondary); margin: 4px 0 0;">Opções, modo de cubagem e desconto oferecidos no apontamento da Produção Secagem, por secador e medida do setup.</p>
       </div>
 
       <div class="card" style="padding: var(--space-3) var(--space-4); margin-bottom: var(--space-3); border-color: var(--color-border); background: var(--color-surface); display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-6); align-items: center;">
-        <div style="display: flex; align-items: center; gap: var(--space-2);">
-          <span style="font-size: var(--font-size-xs); font-weight: 600; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Secador</span>
-          ${secadorBtns}
-        </div>
         <div style="display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap;">
+          <span style="font-size: var(--font-size-xs); font-weight: 600; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.5px;" title="Comprimento × Largura do setup ativo">Medida do setup</span>
+          ${combos.length === 0 ? '<span style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">Cadastre uma medida acima.</span>' : ''}
           <span style="font-size: var(--font-size-xs); font-weight: 600; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.5px;" title="Comprimento × Largura do setup ativo">Medida do setup</span>
           ${comboBtns}
         </div>
@@ -369,6 +465,17 @@ function bindSecagemConfigEvents() {
 
   document.getElementById('cfg-add')?.addEventListener('click', addRegra);
 
+  document.getElementById('cfg-medida-add')?.addEventListener('click', addMedida);
+  document.querySelectorAll('#nm-comp, #nm-larg').forEach(input => {
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') addMedida(); });
+  });
+  document.querySelectorAll('.cfg-medida-toggle').forEach(btn => {
+    btn.addEventListener('click', () => toggleMedida(btn.dataset.id, btn.dataset.ativo === 'true'));
+  });
+  document.querySelectorAll('.cfg-medida-delete').forEach(btn => {
+    btn.addEventListener('click', () => deleteMedida(btn.dataset.id, btn.dataset.label));
+  });
+
   // Enter nos campos da linha de adição/edição confirma, igual clicar no botão
   document.querySelectorAll('input[id^="new-"]').forEach(input => {
     input.addEventListener('keydown', (e) => { if (e.key === 'Enter') addRegra(); });
@@ -376,6 +483,95 @@ function bindSecagemConfigEvents() {
   document.querySelectorAll('input[id^="edit-"]').forEach(input => {
     input.addEventListener('keydown', (e) => { if (e.key === 'Enter' && editingId) saveEdit(editingId); });
   });
+}
+
+async function addMedida() {
+  const comp = parseDecimal(document.getElementById('nm-comp').value);
+  const larg = parseDecimal(document.getElementById('nm-larg').value);
+  const invalida = (v) => v === null || Number.isNaN(v) || v <= 0 || v > 10;
+  if (invalida(comp) || invalida(larg)) {
+    showToast('Informe comprimento e largura em metros (ex.: 2,6 e 1,3), entre 0 e 10.', 'warning');
+    return;
+  }
+
+  const btn = document.getElementById('cfg-medida-add');
+  btn.disabled = true;
+
+  try {
+    const { error } = await supabase.from('pcp_secagem_setup_medidas').insert({
+      secador: selectedSecador,
+      comprimento: comp,
+      largura: larg
+    });
+    if (error) throw error;
+
+    showToast(`Medida ${fmtDim(comp)} × ${fmtDim(larg)} adicionada.`, 'success');
+    selectedComboKey = comboKey(comp, larg);
+    await fetchMedidasSetup();
+    refreshView();
+    document.getElementById('nm-comp')?.focus();
+  } catch (error) {
+    console.error('Error adding medida de setup:', error);
+    showToast(medidaErrorMessage(error, 'Erro ao salvar a medida. Tente novamente.'), 'error');
+    btn.disabled = false;
+  }
+}
+
+async function toggleMedida(id, ativoAtual) {
+  try {
+    const { data, error } = await supabase
+      .from('pcp_secagem_setup_medidas')
+      .update({ ativo: !ativoAtual })
+      .eq('id', id)
+      .select();
+    if (error) throw error;
+    if (!data || data.length === 0) {
+      showToast('Sem permissão para alterar as medidas (somente administradores).', 'error');
+      return;
+    }
+
+    showToast(ativoAtual ? 'Medida desativada.' : 'Medida ativada.', 'success');
+    await fetchMedidasSetup();
+    refreshView();
+  } catch (error) {
+    console.error('Error toggling medida de setup:', error);
+    showToast(medidaErrorMessage(error, 'Erro ao alterar a medida. Tente novamente.'), 'error');
+  }
+}
+
+async function deleteMedida(id, label) {
+  const confirmed = await confirmDialog(
+    'Excluir medida',
+    `Excluir a medida <strong>${esc(label)}</strong>? Ela deixa de ser oferecida no setup; OPs e apontamentos já feitos não são afetados.`
+  );
+  if (!confirmed) return;
+
+  try {
+    const { data, error } = await supabase
+      .from('pcp_secagem_setup_medidas')
+      .delete()
+      .eq('id', id)
+      .select();
+    if (error) throw error;
+    if (!data || data.length === 0) {
+      showToast('Sem permissão para excluir medidas (somente administradores).', 'error');
+      return;
+    }
+
+    showToast(`Medida ${label} excluída.`, 'success');
+    await fetchMedidasSetup();
+    refreshView();
+  } catch (error) {
+    console.error('Error deleting medida de setup:', error);
+    showToast(medidaErrorMessage(error, 'Erro ao excluir a medida. Tente novamente.'), 'error');
+  }
+}
+
+function medidaErrorMessage(error, fallback) {
+  if (String(error?.message).includes('MEDIDA_COM_REGRAS')) return 'Esta medida ainda tem regras de apontamento. Desative-a ou apague as regras antes de excluir.';
+  if (error?.code === '23505') return 'Essa medida já existe para este secador.';
+  if (error?.code === '42501') return 'Sem permissão para alterar as medidas (somente administradores).';
+  return fallback;
 }
 
 function mutationErrorMessage(error) {

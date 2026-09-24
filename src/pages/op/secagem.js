@@ -6,30 +6,25 @@ import { hasModuleAccess } from '../../utils/permissions.js';
 
 const TURNOS = ['00:00 - 06:00', '06:00 - 12:00', '12:00 - 18:00', '18:00 - 00:00'];
 
-// Regras de preenchimento por secador (por nome). Também existem na função do banco
-// salvar_setup_secador e no app-operacional (CONFIG em setup-secadores.js): alterar nos 3 lugares.
-// FEZER: Comprimento fixo, Largura variável. OMECO: Comprimento variável, Largura condicional
-// ao Comprimento escolhido (corrigido em 2026-09-23 — estava com os dois nomes trocados).
-export const SECADOR_CONFIG = {
-  FEZER: {
-    tipos: ['PRODUÇÃO', 'RESSEQUE'],
-    especies: ['PINUS', 'EUCALIPTO'],
-    comprimentos: [2.6],
-    largurasFor: () => [1.3, 0.87],
-    bitolas: [1.5, 1.8, 2.0, 2.2, 2.5, 2.7, 3.1, 3.3],
-    turnos: TURNOS
-  },
-  OMECO: {
-    tipos: ['PRODUÇÃO', 'RESSEQUE'],
-    especies: ['PINUS', 'EUCALIPTO'],
-    comprimentos: [2.6, 1.3],
-    largurasFor: (comprimento) => (comprimento === 2.6 ? [1.3, 0.87] : [0.87]),
-    bitolas: [1.5, 1.8, 2.0, 2.2, 2.5, 2.7, 3.1, 3.3],
-    turnos: TURNOS
-  }
+// Opções fixas do setup. Também existem na função do banco salvar_setup_secador e no app-operacional
+// (setup-secadores.js): alterar nos 3 lugares. Comprimento/Largura NÃO estão aqui: vêm da tabela
+// pcp_secagem_setup_medidas (editável em Configurações > PCP > Secagem).
+const SETUP_OPCOES = {
+  tipos: ['PRODUÇÃO', 'RESSEQUE'],
+  especies: ['PINUS', 'EUCALIPTO'],
+  bitolas: [1.5, 1.8, 2.0, 2.2, 2.5, 2.7, 3.1, 3.3],
+  turnos: TURNOS
 };
 
 let secadores = [];
+let medidasSetup = [];
+
+const descendente = (a, b) => b - a;
+const comprimentosDe = (secador) => [...new Set(medidasSetup.filter(m => m.secador === secador).map(m => Number(m.comprimento)))].sort(descendente);
+const largurasDe = (secador, comprimento) => medidasSetup
+  .filter(m => m.secador === secador && Number(m.comprimento) === Number(comprimento))
+  .map(m => Number(m.largura))
+  .sort(descendente);
 let secagemOps = [];
 let filterSecador = 'Todos';
 let filterStatus = 'Ativa';
@@ -53,6 +48,13 @@ export async function fetchSecagemOps(forceRefresh = false) {
       .order('nome');
     if (secError) throw secError;
     secadores = (secData || []).map(s => s.nome);
+
+    const { data: medData, error: medError } = await supabase
+      .from('pcp_secagem_setup_medidas')
+      .select('secador, comprimento, largura')
+      .eq('ativo', true);
+    if (medError) throw medError;
+    medidasSetup = medData || [];
 
     const { data, error } = await supabase
       .from('pcp_op_secagem')
@@ -198,8 +200,8 @@ export function bindSecagemEvents() {
   document.querySelectorAll('.secador-card').forEach(card => {
     card.addEventListener('click', () => {
       if (!hasModuleAccess('pcp', 'can_actions')) return;
-      if (!SECADOR_CONFIG[card.dataset.secador]) {
-        showToast('As regras de preenchimento deste secador ainda não foram configuradas.', 'warning');
+      if (comprimentosDe(card.dataset.secador).length === 0) {
+        showToast('Este secador ainda não tem medidas de setup ativas. Cadastre em Configurações > PCP > Secagem.', 'warning');
         return;
       }
       showSecagemSetupModal(card.dataset.secador);
@@ -240,7 +242,8 @@ function buildSelectOptions(values, formatter, selectedValue) {
 }
 
 async function showSecagemSetupModal(secador) {
-  const config = SECADOR_CONFIG[secador];
+  const config = SETUP_OPCOES;
+  const comprimentos = comprimentosDe(secador);
   const activeOp = getActiveOp(secador);
 
   let temApontamentos = false;
@@ -252,8 +255,11 @@ async function showSecagemSetupModal(secador) {
     temApontamentos = (count || 0) > 0;
   }
 
-  const comprimentoInicial = activeOp ? Number(activeOp.comprimento) : config.comprimentos[0];
-  const largurasDisponiveis = config.largurasFor(comprimentoInicial);
+  // Se a medida do setup ativo foi desativada depois, cai para a primeira medida disponível.
+  const comprimentoInicial = activeOp && comprimentos.includes(Number(activeOp.comprimento))
+    ? Number(activeOp.comprimento)
+    : comprimentos[0];
+  const largurasDisponiveis = largurasDe(secador, comprimentoInicial);
 
   const modalBody = `
     <form id="secagem-setup-form" class="modal-form" style="font-size: var(--font-size-sm);">
@@ -275,7 +281,7 @@ async function showSecagemSetupModal(secador) {
         <div class="form-group">
           <label class="form-label">Comprimento (m)<span class="required">*</span></label>
           <select class="form-select" id="sec-comprimento" required>
-            ${buildSelectOptions(config.comprimentos, fmtDim, comprimentoInicial)}
+            ${buildSelectOptions(comprimentos, fmtDim, comprimentoInicial)}
           </select>
         </div>
         <div class="form-group">
@@ -332,7 +338,7 @@ async function showSecagemSetupModal(secador) {
 
   comprimentoSel.addEventListener('change', () => {
     const comprimento = parseFloat(comprimentoSel.value);
-    const opcoes = config.largurasFor(comprimento);
+    const opcoes = largurasDe(secador, comprimento);
     larguraSel.innerHTML = buildSelectOptions(opcoes, fmtDim, opcoes[0]);
   });
 
