@@ -311,7 +311,7 @@ function renderSecagemConfig() {
     : regras.map(r => (r.id === editingId ? editRow(r) : viewRow(r))).join('');
 
   return `
-    <div style="max-width: 1000px; margin: 0 auto; width: 100%;">
+    <div style="max-width: 1500px; margin: 0 auto; width: 100%;">
       <div class="card" style="padding: var(--space-3) var(--space-4); margin-bottom: var(--space-6); border-color: var(--color-border); background: var(--color-surface); display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap;">
         <span style="font-size: var(--font-size-xs); font-weight: 600; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Secador</span>
         ${secadorBtns}
