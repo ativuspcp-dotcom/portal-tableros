@@ -306,17 +306,15 @@ function renderActiveTabView() {
               <tr>
                 <th style="font-size: var(--font-size-xs);">Cód. Item</th>
                 <th style="font-size: var(--font-size-xs);">Descrição (ItemName)</th>
-                <th style="font-size: var(--font-size-xs);">Descrição Estrangeira</th>
                 <th style="font-size: var(--font-size-xs);">Classe</th>
                 <th style="font-size: var(--font-size-xs);">Qualidade</th>
                 <th style="font-size: var(--font-size-xs);">Dimensões (C x L)</th>
                 <th style="font-size: var(--font-size-xs);">Bitola/Espessura</th>
-                <th style="font-size: var(--font-size-xs);">Peças/Fardo</th>
               </tr>
             </thead>
             <tbody id="ls-table-body" style="font-size: var(--font-size-sm);">
               <tr>
-                <td colspan="8" style="padding: var(--space-8); text-align: center; color: var(--color-text-secondary);">
+                <td colspan="6" style="padding: var(--space-8); text-align: center; color: var(--color-text-secondary);">
                   Carregando registros do SAP B1...
                 </td>
               </tr>
@@ -574,7 +572,7 @@ async function fetchLaminasSecasSAP() {
   } catch (error) {
     console.error('Network error fetching SAP items:', error);
     showToast('Falha na conexão com o SAP B1.', 'error');
-    document.getElementById('ls-table-body').innerHTML = `<tr><td colspan="8" style="text-align:center; padding: 20px; color: red;">Falha na conexão com o SAP B1.</td></tr>`;
+    document.getElementById('ls-table-body').innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 20px; color: red;">Falha na conexão com o SAP B1.</td></tr>`;
   }
 }
 
@@ -599,7 +597,7 @@ function renderLaminaSecaTableData() {
   if (laminaSecaFilteredItems.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="8" style="padding: var(--space-8); text-align: center; color: var(--color-text-secondary);">
+        <td colspan="6" style="padding: var(--space-8); text-align: center; color: var(--color-text-secondary);">
           Nenhum registro encontrado.
         </td>
       </tr>
@@ -618,12 +616,10 @@ function renderLaminaSecaTableData() {
       <tr>
         <td style="font-family: monospace; font-weight: var(--font-weight-semibold); color: var(--color-text);">${item.ItemCode}</td>
         <td style="font-weight: var(--font-weight-medium); color: var(--color-text);">${item.ItemName || '-'}</td>
-        <td style="font-size: var(--font-size-xs); color: var(--color-text-secondary);">${item.ForeignName || '-'}</td>
         <td><span class="badge" style="background: var(--color-surface-alt); border: 1px solid var(--color-border); color: var(--color-text);">${classe}</span></td>
         <td><span class="badge" style="background: var(--color-surface-alt); color: var(--color-text-secondary);">${qual}</span></td>
         <td>${dims}</td>
         <td><span style="font-weight: var(--font-weight-semibold); color: var(--color-text);">${item.SalesFactor3 || '-'}</span></td>
-        <td style="font-size: var(--font-size-xs); color: var(--color-text-secondary);">${item.SalesFactor4 || '-'}</td>
       </tr>
     `;
   }).join('');
