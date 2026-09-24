@@ -10,7 +10,7 @@ const TURNOS = ['00:00 - 06:00', '06:00 - 12:00', '12:00 - 18:00', '18:00 - 00:0
 // salvar_setup_secador e no app-operacional (CONFIG em setup-secadores.js): alterar nos 3 lugares.
 // FEZER: Comprimento fixo, Largura variável. OMECO: Comprimento variável, Largura condicional
 // ao Comprimento escolhido (corrigido em 2026-09-23 — estava com os dois nomes trocados).
-const SECADOR_CONFIG = {
+export const SECADOR_CONFIG = {
   FEZER: {
     tipos: ['PRODUÇÃO', 'RESSEQUE'],
     especies: ['PINUS', 'EUCALIPTO'],
