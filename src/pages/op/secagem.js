@@ -12,7 +12,7 @@ const TURNOS = ['00:00 - 06:00', '06:00 - 12:00', '12:00 - 18:00', '18:00 - 00:0
 const SETUP_OPCOES = {
   tipos: ['PRODUÇÃO', 'RESSEQUE'],
   especies: ['PINUS', 'EUCALIPTO'],
-  bitolas: [1.5, 1.8, 2.0, 2.2, 2.5, 2.7, 3.1, 3.3],
+  bitolas: [1.5, 1.8, 2.2, 2.5, 2.7, 3.1, 3.3],
   turnos: TURNOS
 };
 
