@@ -10,10 +10,18 @@ const MAIN_TABS = [
   { slug: 'pcp', label: 'PCP' }
 ];
 const PCP_SUB_TABS = [
-  { slug: 'secagem', label: 'Secagem' }
+  { slug: 'secagem', label: 'Secagem' },
+  { slug: 'serra', label: 'Serra' }
 ];
 
+const isTelaSetor = () => activeMainTab === 'pcp' && (activePcpSubTab === 'secagem' || activePcpSubTab === 'serra');
+
 const LOCAIS_ESTOQUE = ['CONSUMIR', 'RESSECAR', 'SERRAR'];
+const LOCAIS_ESTOQUE_SERRA = ['CONSUMIR', 'MERCADO INTERNO'];
+
+// A Serra reutiliza as tabelas de medidas e regras da Secagem com secador = 'SERRA' (na Serra, as colunas
+// "setup" guardam a medida escolhida no apontamento). A sub-aba Secagem esconde a SERRA; a Serra mostra só ela.
+const SERRA = 'SERRA';
 const MODOS_CUBAGEM = ['PEÇAS', 'ALTURA'];
 const CLASSES = ['CAPA', 'ENCHIMENTO', 'MIOLO'];
 const ORDEM_OPCOES = ['A', 'B', 'C', 'CP', 'D', 'L', 'G', 'CASCA'];
@@ -88,7 +96,7 @@ export async function renderConfiguracoes(container = document.getElementById('v
   bindSidebarEvents();
   bindTabEvents();
 
-  if (activeMainTab === 'pcp' && activePcpSubTab === 'secagem') {
+  if (isTelaSetor()) {
     // Sequencial de propósito: não usar Promise.all em várias chamadas supabase.from()
     await fetchSecadoresCadastrados();
     await fetchMedidasSetup();
@@ -98,7 +106,7 @@ export async function renderConfiguracoes(container = document.getElementById('v
 }
 
 function renderActiveTabView() {
-  if (activeMainTab === 'pcp' && activePcpSubTab === 'secagem') {
+  if (isTelaSetor()) {
     return renderSecagemConfig();
   }
   return '';
@@ -108,7 +116,7 @@ function refreshView() {
   const content = document.getElementById('config-tab-content');
   if (!content) return;
   content.innerHTML = renderActiveTabView();
-  if (activeMainTab === 'pcp' && activePcpSubTab === 'secagem') bindSecagemConfigEvents();
+  if (isTelaSetor()) bindSecagemConfigEvents();
 }
 
 function bindTabEvents() {
@@ -189,11 +197,12 @@ async function fetchSecadoresCadastrados() {
 
 /** Secadores cadastrados (qualquer filial) + qualquer um que já tenha medida ou regra gravada. */
 function secadoresConhecidos() {
+  if (activePcpSubTab === 'serra') return [SERRA];
   return [...new Set([
     ...secadoresCadastrados,
     ...medidasSetup.map(m => m.secador),
     ...regrasCubagem.map(r => r.secador)
-  ])].sort();
+  ])].filter(s => s !== SERRA).sort();
 }
 
 /** Medidas de setup do secador (tabela pcp_secagem_setup_medidas) + medidas que só tenham regra no banco. */
@@ -247,6 +256,8 @@ function renderSecagemConfig() {
     return `<div style="padding: var(--space-8); text-align: center; color: var(--color-text-secondary);">Carregando regras...</div>`;
   }
 
+  const isSerra = activePcpSubTab === 'serra';
+  const origemMedida = isSerra ? 'da medida escolhida no apontamento' : 'do setup ativo';
   const secadores = secadoresConhecidos();
   if (secadores.length === 0) {
     return `<div style="padding: var(--space-8); text-align: center; color: var(--color-text-secondary);">Nenhum secador cadastrado.</div>`;
@@ -319,14 +330,17 @@ function renderSecagemConfig() {
 
   return `
     <div style="max-width: 1500px; margin: 0 auto; width: 100%;">
+      ${isSerra ? '' : `
       <div class="card" style="padding: var(--space-3) var(--space-4); margin-bottom: var(--space-6); border-color: var(--color-border); background: var(--color-surface); display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap;">
         <span style="font-size: var(--font-size-xs); font-weight: 600; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Secador</span>
         ${secadorBtns}
-      </div>
+      </div>`}
 
       <div style="margin-bottom: var(--space-3);">
-        <h3 style="font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); color: var(--color-text); margin: 0;">Medidas do setup</h3>
-        <p style="font-size: var(--font-size-sm); color: var(--color-text-secondary); margin: 4px 0 0;">Combinações de comprimento × largura que o apontador pode escolher ao definir o setup do secador ${esc(selectedSecador)}. Desativar tira a medida das telas de setup sem apagar o histórico.</p>
+        <h3 style="font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); color: var(--color-text); margin: 0;">${isSerra ? 'Medidas do apontamento' : 'Medidas do setup'}</h3>
+        <p style="font-size: var(--font-size-sm); color: var(--color-text-secondary); margin: 4px 0 0;">${isSerra
+          ? 'Combinações de comprimento × largura que o apontador pode escolher no apontamento da Serra (a Serra não tem comprimento/largura no setup). Desativar tira a medida da tela do apontamento sem apagar o histórico.'
+          : `Combinações de comprimento × largura que o apontador pode escolher ao definir o setup do secador ${esc(selectedSecador)}. Desativar tira a medida das telas de setup sem apagar o histórico.`}</p>
       </div>
 
       <div class="card" style="padding: 0; overflow: hidden; border-color: var(--color-border); background: var(--color-surface); margin-bottom: var(--space-2);">
@@ -360,14 +374,15 @@ function renderSecagemConfig() {
 
       <div style="margin-bottom: var(--space-3);">
         <h3 style="font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); color: var(--color-text); margin: 0;">Regras de apontamento</h3>
-        <p style="font-size: var(--font-size-sm); color: var(--color-text-secondary); margin: 4px 0 0;">Opções, modo de cubagem e desconto oferecidos no apontamento da Produção Secagem, por secador e medida do setup.</p>
+        <p style="font-size: var(--font-size-sm); color: var(--color-text-secondary); margin: 4px 0 0;">${isSerra
+          ? 'Opções, modo de cubagem e desconto oferecidos no apontamento da Produção Serra, por medida escolhida.'
+          : 'Opções, modo de cubagem e desconto oferecidos no apontamento da Produção Secagem, por secador e medida do setup.'}</p>
       </div>
 
       <div class="card" style="padding: var(--space-3) var(--space-4); margin-bottom: var(--space-3); border-color: var(--color-border); background: var(--color-surface); display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-6); align-items: center;">
         <div style="display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap;">
-          <span style="font-size: var(--font-size-xs); font-weight: 600; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.5px;" title="Comprimento × Largura do setup ativo">Medida do setup</span>
+          <span style="font-size: var(--font-size-xs); font-weight: 600; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.5px;" title="Comprimento × Largura ${isSerra ? 'escolhidos no apontamento' : 'do setup ativo'}">${isSerra ? 'Medida' : 'Medida do setup'}</span>
           ${combos.length === 0 ? '<span style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">Cadastre uma medida acima.</span>' : ''}
-          <span style="font-size: var(--font-size-xs); font-weight: 600; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.5px;" title="Comprimento × Largura do setup ativo">Medida do setup</span>
           ${comboBtns}
         </div>
       </div>
@@ -381,8 +396,8 @@ function renderSecagemConfig() {
                   <th style="font-size: var(--font-size-xs); padding: 6px 8px;">Opção</th>
                   <th style="font-size: var(--font-size-xs); padding: 6px 8px;" title="Classe da lâmina (CAPA, ENCHIMENTO ou MIOLO). Usada para encontrar o item correto no apontamento.">Classe</th>
                   <th style="font-size: var(--font-size-xs); padding: 6px 8px;">Modo Cubagem</th>
-                  <th style="font-size: var(--font-size-xs); padding: 6px 8px;" title="Em branco = usa o comprimento do setup. Preencha em metros (ex.: 2,6) só se a opção usar um comprimento fixo.">Comprimento fixo (m)</th>
-                  <th style="font-size: var(--font-size-xs); padding: 6px 8px;" title="Em branco = usa a largura do setup. Preencha em metros (ex.: 1,3) só se a opção usar uma largura fixa.">Largura fixa (m)</th>
+                  <th style="font-size: var(--font-size-xs); padding: 6px 8px;" title="Em branco = usa o comprimento ${origemMedida}. Preencha em metros (ex.: 2,6) só se a opção usar um comprimento fixo.">Comprimento fixo (m)</th>
+                  <th style="font-size: var(--font-size-xs); padding: 6px 8px;" title="Em branco = usa a largura ${origemMedida}. Preencha em metros (ex.: 1,3) só se a opção usar uma largura fixa.">Largura fixa (m)</th>
                   <th style="font-size: var(--font-size-xs); padding: 6px 8px; text-align: center;">Desconto %</th>
                   <th style="width: 70px; padding: 6px 8px;"></th>
                 </tr>
@@ -400,14 +415,14 @@ function renderSecagemConfig() {
           </div>
         </div>
         <p style="font-size: var(--font-size-xs); color: var(--color-text-secondary); margin: var(--space-2) 0 var(--space-4);">
-          <strong>Comprimento/Largura fixos:</strong> deixe em branco (aparece <em>Setup</em>) para a opção usar a medida do setup ativo. Preencha só quando a opção usa uma medida sempre igual, não importa o setup — em <strong>metros</strong>, com vírgula ou ponto (ex.: <em>2,6</em> ou <em>1,3</em>; nunca 2600).
+          <strong>Comprimento/Largura fixos:</strong> deixe em branco (aparece <em>Setup</em>) para a opção usar o comprimento/largura ${origemMedida}. Preencha só quando a opção usa uma medida sempre igual, não importa ${isSerra ? 'a medida escolhida' : 'o setup'} — em <strong>metros</strong>, com vírgula ou ponto (ex.: <em>2,6</em> ou <em>1,3</em>; nunca 2600).
           As alterações valem na hora para o app-operacional e não mudam apontamentos já feitos.
         </p>
       ` : ''}
 
       <div style="display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; font-size: var(--font-size-xs); color: var(--color-text-secondary);">
         <span style="font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Local Estoque</span>
-        ${LOCAIS_ESTOQUE.map(o => `<span class="badge" style="background: var(--color-surface-alt); border: 1px solid var(--color-border); color: var(--color-text);">${o}</span>`).join('')}
+        ${(isSerra ? LOCAIS_ESTOQUE_SERRA : LOCAIS_ESTOQUE).map(o => `<span class="badge" style="background: var(--color-surface-alt); border: 1px solid var(--color-border); color: var(--color-text);">${o}</span>`).join('')}
       </div>
     </div>
   `;

@@ -9,6 +9,8 @@ import { fetchSecagemOps, renderSecagemView, bindSecagemEvents } from './op/seca
 import { fetchEstoqueCompAcabado, renderEstoqueCompAcabadoView, renderEstoqueDashboard, bindEstoqueCompAcabadoEvents } from './estoque/comp-acabado.js';
 import { fetchAmarracoesProducao, renderAmarracoesProducaoView, bindAmarracoesProducaoEvents } from './producao/amarracoes.js';
 import { fetchSecagemProducao, renderSecagemProducaoView, bindSecagemProducaoEvents } from './producao/secagem.js';
+import { fetchSerraOps, renderSerraView, bindSerraEvents } from './op/serra.js';
+import { fetchSerraProducao, renderSerraProducaoView, bindSerraProducaoEvents } from './producao/serra.js';
 
 window.addEventListener('amarracao_created', () => {
   if (activeMainTab === 'op' && activeOpSubTab === 'amarracao') {
@@ -34,6 +36,20 @@ window.addEventListener('secagem_producao_changed', () => {
   if (activeMainTab === 'producao' && activeSubTab === 'secagem') {
     document.getElementById('pcp-tab-content').innerHTML = renderActiveTabView();
     bindSecagemProducaoEvents();
+  }
+});
+
+window.addEventListener('serra_changed', () => {
+  if (activeMainTab === 'op' && activeOpSubTab === 'serra') {
+    document.getElementById('pcp-tab-content').innerHTML = renderActiveTabView();
+    bindSerraEvents();
+  }
+});
+
+window.addEventListener('serra_producao_changed', () => {
+  if (activeMainTab === 'producao' && activeSubTab === 'serra') {
+    document.getElementById('pcp-tab-content').innerHTML = renderActiveTabView();
+    bindSerraProducaoEvents();
   }
 });
 
@@ -137,6 +153,10 @@ export async function renderPCP(container = document.getElementById('view-pcp') 
                 style="font-size: var(--font-size-sm); font-weight: ${activeSubTab === 'secagem' ? '600' : '400'}; color: ${activeSubTab === 'secagem' ? 'var(--color-primary)' : 'var(--color-text-secondary)'}; border: none; background: transparent; border-bottom: 2px solid ${activeSubTab === 'secagem' ? 'var(--color-primary)' : 'transparent'}; padding-bottom: 4px; transition: all var(--transition-fast);">
                 Secagem
               </button>
+              <button class="pcp-sub-tab-btn ${activeSubTab === 'serra' ? 'active' : ''}" data-subtab="serra"
+                style="font-size: var(--font-size-sm); font-weight: ${activeSubTab === 'serra' ? '600' : '400'}; color: ${activeSubTab === 'serra' ? 'var(--color-primary)' : 'var(--color-text-secondary)'}; border: none; background: transparent; border-bottom: 2px solid ${activeSubTab === 'serra' ? 'var(--color-primary)' : 'transparent'}; padding-bottom: 4px; transition: all var(--transition-fast);">
+                Serra
+              </button>
             </div>
           ` : activeMainTab === 'op' ? `
             <div class="pcp-sub-tabs" style="display: flex; gap: var(--space-4); margin-bottom: var(--space-4); border-bottom: 1px solid var(--color-border-light); padding-bottom: var(--space-2); padding-left: var(--space-2); overflow-x: auto; white-space: nowrap;">
@@ -199,6 +219,16 @@ export async function renderPCP(container = document.getElementById('view-pcp') 
         bindSecagemEvents();
       }
     });
+  } else if (activeMainTab === 'op' && activeOpSubTab === 'serra') {
+    document.getElementById('pcp-tab-content').innerHTML = renderActiveTabView();
+    bindSerraEvents();
+
+    fetchSerraOps().then(() => {
+      if (activeMainTab === 'op' && activeOpSubTab === 'serra') {
+        document.getElementById('pcp-tab-content').innerHTML = renderActiveTabView();
+        bindSerraEvents();
+      }
+    });
   } else if (activeMainTab === 'estoque' && (activeSubTab === 'estoque_comp_acabado' || !activeSubTab.startsWith('estoque_'))) {
     document.getElementById('pcp-tab-content').innerHTML = renderActiveTabView();
     fetchEstoqueCompAcabado().then(() => {
@@ -227,6 +257,16 @@ export async function renderPCP(container = document.getElementById('view-pcp') 
         bindSecagemProducaoEvents();
       }
     });
+  } else if (activeMainTab === 'producao' && activeSubTab === 'serra') {
+    document.getElementById('pcp-tab-content').innerHTML = renderActiveTabView();
+    bindSerraProducaoEvents();
+
+    fetchSerraProducao().then(() => {
+      if (activeMainTab === 'producao' && activeSubTab === 'serra') {
+        document.getElementById('pcp-tab-content').innerHTML = renderActiveTabView();
+        bindSerraProducaoEvents();
+      }
+    });
   }
 }
 
@@ -241,6 +281,7 @@ function renderActiveTabView() {
   
   if (activeMainTab === 'producao') {
     if (activeSubTab === 'secagem') return renderSecagemProducaoView();
+    if (activeSubTab === 'serra') return renderSerraProducaoView();
     return renderAmarracoesProducaoView();
   }
 
@@ -267,6 +308,10 @@ function renderActiveTabView() {
 
     if (activeMainTab === 'op' && activeOpSubTab === 'secagem') {
       return renderSecagemView();
+    }
+
+    if (activeMainTab === 'op' && activeOpSubTab === 'serra') {
+      return renderSerraView();
     }
 
     return `

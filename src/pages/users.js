@@ -315,7 +315,7 @@ function openUserModal(existingUser = null) {
       <div id="permissions-app" style="display: none; margin-top: 16px;">
         <h4 style="margin-bottom: 8px; font-size: 0.9rem; color: var(--color-primary);">Módulos do App Operacional (Tablets)</h4>
         
-        ${['Laminação', 'Secagem', 'Colagem', 'Acabamento', 'Expedição', 'Qualidade'].map(group => {
+        ${['Laminação', 'Secagem', 'Serra', 'Colagem', 'Acabamento', 'Expedição', 'Qualidade'].map(group => {
             const groupMods = allModules.filter(m => m.type === 'app' && m.group_name === group);
             if (groupMods.length === 0) return '';
             return `

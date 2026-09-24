@@ -9,7 +9,7 @@ const TURNOS = ['00:00 - 06:00', '06:00 - 12:00', '12:00 - 18:00', '18:00 - 00:0
 // Opções fixas do setup. Também existem na função do banco salvar_setup_secador e no app-operacional
 // (setup-secadores.js): alterar nos 3 lugares. Comprimento/Largura NÃO estão aqui: vêm da tabela
 // pcp_secagem_setup_medidas (editável em Configurações > PCP > Secagem).
-const SETUP_OPCOES = {
+export const SETUP_OPCOES = {
   tipos: ['PRODUÇÃO', 'RESSEQUE'],
   especies: ['PINUS', 'EUCALIPTO'],
   bitolas: [1.5, 1.8, 2.2, 2.5, 2.7, 3.1, 3.3],
