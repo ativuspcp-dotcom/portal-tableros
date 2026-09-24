@@ -15,6 +15,7 @@ const PCP_SUB_TABS = [
 
 const LOCAIS_ESTOQUE = ['CONSUMIR', 'RESSECAR', 'SERRAR'];
 const MODOS_CUBAGEM = ['PEÇAS', 'ALTURA'];
+const CLASSES = ['CAPA', 'ENCHIMENTO', 'MIOLO'];
 
 let activeMainTab = sessionStorage.getItem('configActiveMainTab') || 'pcp';
 let activePcpSubTab = sessionStorage.getItem('configActivePcpSubTab') || 'secagem';
@@ -218,6 +219,12 @@ function rowInputsHtml(prefix, values) {
   return `
     <td style="${CELL}"><input type="text" id="${prefix}-opcao" class="form-input" maxlength="12" placeholder="Ex.: E" value="${esc(values.opcao)}" style="${INPUT_STYLE} width: 90px; text-transform: uppercase;" /></td>
     <td style="${CELL}">
+      <select id="${prefix}-classe" class="form-select" style="${INPUT_STYLE} width: 130px;">
+        <option value="">—</option>
+        ${CLASSES.map(c => `<option value="${c}" ${values.classe === c ? 'selected' : ''}>${c}</option>`).join('')}
+      </select>
+    </td>
+    <td style="${CELL}">
       <select id="${prefix}-modo" class="form-select" style="${INPUT_STYLE} width: 110px;">
         ${MODOS_CUBAGEM.map(m => `<option value="${m}" ${values.modo_cubagem === m ? 'selected' : ''}>${m}</option>`).join('')}
       </select>
@@ -277,6 +284,7 @@ function renderSecagemConfig() {
   const viewRow = (r) => `
     <tr>
       <td style="${CELL} font-weight: 600; color: var(--color-text);">${esc(r.opcao)}</td>
+      <td style="${CELL} font-size: var(--font-size-sm);">${r.classe ? esc(r.classe) : '<span style="color: var(--color-text-secondary);">—</span>'}</td>
       <td style="${CELL}"><span class="badge" style="background: var(--color-surface-alt); color: var(--color-text-secondary);">${r.modo_cubagem}</span></td>
       <td style="${CELL} font-size: var(--font-size-sm);">${r.comprimento_override !== null ? `${fmtDim(r.comprimento_override)} m` : '<span style="color: var(--color-text-secondary);">Setup</span>'}</td>
       <td style="${CELL} font-size: var(--font-size-sm);">${r.largura_override !== null ? `${fmtDim(r.largura_override)} m` : '<span style="color: var(--color-text-secondary);">Setup</span>'}</td>
@@ -299,7 +307,7 @@ function renderSecagemConfig() {
   `;
 
   const rowsHtml = regras.length === 0
-    ? `<tr><td colspan="6" style="padding: var(--space-4); text-align: center; color: var(--color-text-secondary); font-size: var(--font-size-sm);">Nenhuma opção cadastrada para esta medida. Adicione a primeira abaixo.</td></tr>`
+    ? `<tr><td colspan="7" style="padding: var(--space-4); text-align: center; color: var(--color-text-secondary); font-size: var(--font-size-sm);">Nenhuma opção cadastrada para esta medida. Adicione a primeira abaixo.</td></tr>`
     : regras.map(r => (r.id === editingId ? editRow(r) : viewRow(r))).join('');
 
   return `
@@ -364,6 +372,7 @@ function renderSecagemConfig() {
               <thead>
                 <tr>
                   <th style="font-size: var(--font-size-xs); padding: 6px 8px;">Opção</th>
+                  <th style="font-size: var(--font-size-xs); padding: 6px 8px;" title="Classe da lâmina (CAPA, ENCHIMENTO ou MIOLO). Usada para encontrar o item correto no apontamento.">Classe</th>
                   <th style="font-size: var(--font-size-xs); padding: 6px 8px;">Modo Cubagem</th>
                   <th style="font-size: var(--font-size-xs); padding: 6px 8px;" title="Em branco = usa o comprimento do setup. Preencha em metros (ex.: 2,6) só se a opção usar um comprimento fixo.">Comprimento fixo (m)</th>
                   <th style="font-size: var(--font-size-xs); padding: 6px 8px;" title="Em branco = usa a largura do setup. Preencha em metros (ex.: 1,3) só se a opção usar uma largura fixa.">Largura fixa (m)</th>
@@ -401,6 +410,7 @@ function renderSecagemConfig() {
 function readRowForm(prefix) {
   const opcao = document.getElementById(`${prefix}-opcao`).value.trim().toUpperCase();
   const modo = document.getElementById(`${prefix}-modo`).value;
+  const classe = document.getElementById(`${prefix}-classe`).value || null;
   const comp = parseDecimal(document.getElementById(`${prefix}-comp`).value);
   const larg = parseDecimal(document.getElementById(`${prefix}-larg`).value);
   const desc = Number(document.getElementById(`${prefix}-desc`).value);
@@ -419,7 +429,7 @@ function readRowForm(prefix) {
     return null;
   }
 
-  return { opcao, modo_cubagem: modo, comprimento_override: comp, largura_override: larg, desconto: desc };
+  return { opcao, classe, modo_cubagem: modo, comprimento_override: comp, largura_override: larg, desconto: desc };
 }
 
 function bindSecagemConfigEvents() {
