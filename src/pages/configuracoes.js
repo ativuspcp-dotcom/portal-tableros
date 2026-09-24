@@ -244,7 +244,12 @@ function renderSecagemConfig() {
     : regras.map(r => (r.id === editingId ? editRow(r) : viewRow(r))).join('');
 
   return `
-    <div style="max-width: 860px;">
+    <div style="max-width: 1000px; margin: 0 auto; width: 100%;">
+      <div style="margin-bottom: var(--space-4);">
+        <h3 style="font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); color: var(--color-text); margin: 0;">Regras de apontamento</h3>
+        <p style="font-size: var(--font-size-sm); color: var(--color-text-secondary); margin: 4px 0 0;">Opções, modo de cubagem e desconto oferecidos no apontamento da Produção Secagem, por secador e medida do setup.</p>
+      </div>
+
       <div class="card" style="padding: var(--space-3) var(--space-4); margin-bottom: var(--space-3); border-color: var(--color-border); background: var(--color-surface); display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-6); align-items: center;">
         <div style="display: flex; align-items: center; gap: var(--space-2);">
           <span style="font-size: var(--font-size-xs); font-weight: 600; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Secador</span>
@@ -264,8 +269,8 @@ function renderSecagemConfig() {
                 <tr>
                   <th style="font-size: var(--font-size-xs); padding: 6px 8px;">Opção</th>
                   <th style="font-size: var(--font-size-xs); padding: 6px 8px;">Modo Cubagem</th>
-                  <th style="font-size: var(--font-size-xs); padding: 6px 8px;" title="Vazio = usa o comprimento do setup">Comprimento fixo</th>
-                  <th style="font-size: var(--font-size-xs); padding: 6px 8px;" title="Vazio = usa a largura do setup">Largura fixa</th>
+                  <th style="font-size: var(--font-size-xs); padding: 6px 8px;" title="Em branco = usa o comprimento do setup. Preencha em metros (ex.: 2,6) só se a opção usar um comprimento fixo.">Comprimento fixo (m)</th>
+                  <th style="font-size: var(--font-size-xs); padding: 6px 8px;" title="Em branco = usa a largura do setup. Preencha em metros (ex.: 1,3) só se a opção usar uma largura fixa.">Largura fixa (m)</th>
                   <th style="font-size: var(--font-size-xs); padding: 6px 8px; text-align: center;">Desconto %</th>
                   <th style="width: 70px; padding: 6px 8px;"></th>
                 </tr>
@@ -283,7 +288,8 @@ function renderSecagemConfig() {
           </div>
         </div>
         <p style="font-size: var(--font-size-xs); color: var(--color-text-secondary); margin: var(--space-2) 0 var(--space-4);">
-          Comprimento/Largura fixos em branco (<em>Setup</em>) usam a medida do setup ativo no momento do apontamento. As alterações valem na hora para o app-operacional e não mudam apontamentos já feitos.
+          <strong>Comprimento/Largura fixos:</strong> deixe em branco (aparece <em>Setup</em>) para a opção usar a medida do setup ativo. Preencha só quando a opção usa uma medida sempre igual, não importa o setup — em <strong>metros</strong>, com vírgula ou ponto (ex.: <em>2,6</em> ou <em>1,3</em>; nunca 2600).
+          As alterações valem na hora para o app-operacional e não mudam apontamentos já feitos.
         </p>
       ` : ''}
 
@@ -307,8 +313,9 @@ function readRowForm(prefix) {
     showToast('Informe o nome da opção.', 'warning');
     return null;
   }
-  if (Number.isNaN(comp) || (comp !== null && comp <= 0) || Number.isNaN(larg) || (larg !== null && larg <= 0)) {
-    showToast('Comprimento/Largura fixos devem ser números maiores que zero (ou ficar em branco).', 'warning');
+  const medidaInvalida = (v) => Number.isNaN(v) || (v !== null && (v <= 0 || v > 10));
+  if (medidaInvalida(comp) || medidaInvalida(larg)) {
+    showToast('Comprimento/Largura fixos devem estar em metros (ex.: 2,6), entre 0 e 10 — ou ficar em branco para usar o setup.', 'warning');
     return null;
   }
   if (!Number.isInteger(desc) || desc < 0 || desc > 100) {
