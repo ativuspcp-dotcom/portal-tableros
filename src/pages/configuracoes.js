@@ -16,6 +16,11 @@ const PCP_SUB_TABS = [
 const LOCAIS_ESTOQUE = ['CONSUMIR', 'RESSECAR', 'SERRAR'];
 const MODOS_CUBAGEM = ['PEÇAS', 'ALTURA'];
 const CLASSES = ['CAPA', 'ENCHIMENTO', 'MIOLO'];
+const ORDEM_OPCOES = ['A', 'B', 'C', 'CP', 'D', 'L', 'G', 'CASCA'];
+const posicaoOpcao = (opcao) => {
+  const i = ORDEM_OPCOES.indexOf(opcao);
+  return i === -1 ? ORDEM_OPCOES.length : i;
+};
 
 let activeMainTab = sessionStorage.getItem('configActiveMainTab') || 'pcp';
 let activePcpSubTab = sessionStorage.getItem('configActivePcpSubTab') || 'secagem';
@@ -139,7 +144,9 @@ async function fetchRegrasCubagem() {
       .order('opcao');
 
     if (error) throw error;
-    regrasCubagem = data || [];
+    // Ordem fixa das Opções (a mesma do app-operacional); sort estável mantém o resto da ordem do banco.
+    // Opção fora da lista (nova) vai para o fim, em ordem alfabética.
+    regrasCubagem = (data || []).sort((a, b) => posicaoOpcao(a.opcao) - posicaoOpcao(b.opcao) || a.opcao.localeCompare(b.opcao));
     regrasCarregadas = true;
   } catch (error) {
     console.error('Error fetching regras de cubagem:', error);
