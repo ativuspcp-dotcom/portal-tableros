@@ -3,7 +3,7 @@ import { showToast } from '../../components/toast.js';
 import { openModal, closeModal } from '../../components/modal.js';
 import { getBPLID } from '../../auth/auth.js';
 import { hasModuleAccess } from '../../utils/permissions.js';
-import { SETUP_OPCOES } from './secagem.js';
+import { SETUP_OPCOES, fmtDataHora } from './secagem.js';
 
 // Setup das serras (SERRA 1, SERRA 2...): mesmo padrão dos secadores. Cada serra cadastrada na filial
 // (tabela pcp_serras) tem um setup ativo próprio. Espécie/bitola/turno são as mesmas listas dos secadores
@@ -81,6 +81,7 @@ export function renderSerraView() {
             <div><span style="color: var(--color-text-secondary);">Espécie:</span> <strong>${op.especie}</strong></div>
             <div><span style="color: var(--color-text-secondary);">Bitola:</span> <strong>${fmtBitola(op.bitola)} mm</strong></div>
             <div><span style="color: var(--color-text-secondary);">Turno:</span> <strong>${op.turno}</strong></div>
+            <div style="grid-column: span 2;"><span style="color: var(--color-text-secondary);">Efetivada em:</span> <strong>${fmtDataHora(op.created_at)}</strong></div>
           </div>
         ` : `
           <p style="color: var(--color-text-secondary); font-size: var(--font-size-sm); margin: 0;">Nenhum setup definido para esta serra. Clique para configurar e abrir a primeira ordem de produção.</p>
@@ -101,7 +102,7 @@ export function renderSerraView() {
   });
 
   const rowsHtml = filteredOps.length === 0
-    ? `<tr><td colspan="8" style="text-align: center; padding: var(--space-8); color: var(--color-text-secondary);">Nenhuma ordem de produção encontrada.</td></tr>`
+    ? `<tr><td colspan="10" style="text-align: center; padding: var(--space-8); color: var(--color-text-secondary);">Nenhuma ordem de produção encontrada.</td></tr>`
     : filteredOps.map(o => `
         <tr>
           <td style="font-weight: 600; color: var(--color-primary);">${o.codigo_op || '-'}</td>
@@ -111,6 +112,8 @@ export function renderSerraView() {
           <td>${fmtBitola(o.bitola)} mm</td>
           <td style="font-size: var(--font-size-xs);">${o.turno}</td>
           <td><span class="badge ${o.status === 'Ativa' ? 'badge-success' : 'badge-neutral'}">${o.status}</span></td>
+          <td style="font-size: var(--font-size-xs); white-space: nowrap;">${fmtDataHora(o.created_at)}</td>
+          <td style="font-size: var(--font-size-xs); white-space: nowrap;">${fmtDataHora(o.encerrada_at)}</td>
           <td style="font-size: var(--font-size-xs); color: var(--color-text-secondary);">${o.responsavel_nome || '-'}</td>
         </tr>
       `).join('');
@@ -153,6 +156,8 @@ export function renderSerraView() {
                 <th style="font-size: var(--font-size-xs);">Bitola</th>
                 <th style="font-size: var(--font-size-xs);">Turno</th>
                 <th style="font-size: var(--font-size-xs);">Status</th>
+                <th style="font-size: var(--font-size-xs);">Efetivada em</th>
+                <th style="font-size: var(--font-size-xs);">Encerrada em</th>
                 <th style="font-size: var(--font-size-xs);">Definido por</th>
               </tr>
             </thead>

@@ -37,6 +37,14 @@ function fmtBitola(v) {
   return Number(v).toFixed(1).replace('.', ',');
 }
 
+/** dd/mm/aaaa hh:mm no horário local; "-" quando vazio (ex.: OP ainda não encerrada). */
+export function fmtDataHora(iso) {
+  if (!iso) return '-';
+  const d = new Date(iso);
+  const p = (n) => String(n).padStart(2, '0');
+  return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
 export async function fetchSecagemOps(forceRefresh = false) {
   try {
     // Sequencial de propósito: não usar Promise.all em várias chamadas supabase.from()
@@ -106,6 +114,7 @@ export function renderSecagemView() {
             <div><span style="color: var(--color-text-secondary);">Dimensões:</span> <strong>${fmtDim(op.comprimento)} x ${fmtDim(op.largura)} m</strong></div>
             <div><span style="color: var(--color-text-secondary);">Bitola:</span> <strong>${fmtBitola(op.bitola)} mm</strong></div>
             <div style="grid-column: span 2;"><span style="color: var(--color-text-secondary);">Turno:</span> <strong>${op.turno}</strong></div>
+            <div style="grid-column: span 2;"><span style="color: var(--color-text-secondary);">Efetivada em:</span> <strong>${fmtDataHora(op.created_at)}</strong></div>
           </div>
         ` : `
           <p style="color: var(--color-text-secondary); font-size: var(--font-size-sm); margin: 0;">Nenhum setup definido para este secador. Clique para configurar e abrir a primeira ordem de produção.</p>
@@ -126,7 +135,7 @@ export function renderSecagemView() {
   });
 
   const rowsHtml = filteredOps.length === 0
-    ? `<tr><td colspan="9" style="text-align: center; padding: var(--space-8); color: var(--color-text-secondary);">Nenhuma ordem de produção encontrada.</td></tr>`
+    ? `<tr><td colspan="11" style="text-align: center; padding: var(--space-8); color: var(--color-text-secondary);">Nenhuma ordem de produção encontrada.</td></tr>`
     : filteredOps.map(op => {
         return `
         <tr>
@@ -140,6 +149,8 @@ export function renderSecagemView() {
           <td>
             <span class="badge ${op.status === 'Ativa' ? 'badge-success' : 'badge-neutral'}">${op.status}</span>
           </td>
+          <td style="font-size: var(--font-size-xs); white-space: nowrap;">${fmtDataHora(op.created_at)}</td>
+          <td style="font-size: var(--font-size-xs); white-space: nowrap;">${fmtDataHora(op.encerrada_at)}</td>
           <td style="font-size: var(--font-size-xs); color: var(--color-text-secondary);">${op.responsavel_nome || '-'}</td>
         </tr>
       `}).join('');
@@ -183,6 +194,8 @@ export function renderSecagemView() {
                 <th style="font-size: var(--font-size-xs);">Bitola</th>
                 <th style="font-size: var(--font-size-xs);">Turno</th>
                 <th style="font-size: var(--font-size-xs);">Status</th>
+                <th style="font-size: var(--font-size-xs);">Efetivada em</th>
+                <th style="font-size: var(--font-size-xs);">Encerrada em</th>
                 <th style="font-size: var(--font-size-xs);">Definido por</th>
               </tr>
             </thead>

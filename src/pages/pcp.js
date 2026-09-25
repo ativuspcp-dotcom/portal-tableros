@@ -34,7 +34,7 @@ window.addEventListener('amarracoes_producao_changed', () => {
 });
 
 window.addEventListener('secagem_producao_changed', () => {
-  if (activeMainTab === 'producao' && activeSubTab === 'secagem') {
+  if (activeMainTab === 'producao' && activeSubTab === 'secagem' && activeSecagemSubTab === 'producao') {
     document.getElementById('pcp-tab-content').innerHTML = renderActiveTabView();
     bindSecagemProducaoEvents();
   }
@@ -48,14 +48,14 @@ window.addEventListener('serra_changed', () => {
 });
 
 window.addEventListener('serra_producao_changed', () => {
-  if (activeMainTab === 'producao' && activeSubTab === 'serra' && activeSerraSubTab === 'producao') {
+  if (activeMainTab === 'producao' && activeSubTab === 'serra') {
     document.getElementById('pcp-tab-content').innerHTML = renderActiveTabView();
     bindSerraProducaoEvents();
   }
 });
 
 window.addEventListener('serra_consumo_changed', () => {
-  if (activeMainTab === 'producao' && activeSubTab === 'serra' && activeSerraSubTab === 'consumo') {
+  if (activeMainTab === 'producao' && activeSubTab === 'secagem' && activeSecagemSubTab === 'consumo') {
     document.getElementById('pcp-tab-content').innerHTML = renderActiveTabView();
     bindSerraConsumoEvents();
   }
@@ -65,9 +65,9 @@ window.addEventListener('serra_consumo_changed', () => {
 let activeMainTab = sessionStorage.getItem('pcpActiveMainTab') || 'producao'; // 'cadastro', 'estrutura', 'op', 'mrp', 'estoque', 'producao'
 let activeSubTab = sessionStorage.getItem('pcpActiveSubTab') || 'amarracoes'; // 'lamina_verde', 'lamina_seca', 'compensado_inacabado', 'compensado_acabado', 'estoque_comp_acabado', 'amarracoes'
 let activeOpSubTab = sessionStorage.getItem('pcpActiveOpSubTab') || 'laminacao';
-let activeSerraSubTab = sessionStorage.getItem('pcpActiveSerraSubTab') || 'producao'; // 3º nível de PCP > Produção > Serra
+let activeSecagemSubTab = sessionStorage.getItem('pcpActiveSecagemSubTab') || 'producao'; // 3º nível de PCP > Produção > Secagem
 
-const SERRA_SUB_TABS = [
+const SECAGEM_SUB_TABS = [
   { slug: 'producao', label: 'Produção' },
   { slug: 'consumo', label: 'Consumo' },
   { slug: 'reclassificacao', label: 'Reclassificação' },
@@ -174,11 +174,11 @@ export async function renderPCP(container = document.getElementById('view-pcp') 
                 Serra
               </button>
             </div>
-            ${activeSubTab === 'serra' ? `
-              <div class="pcp-serra-sub-tabs" style="display: flex; gap: var(--space-4); margin: calc(-1 * var(--space-2)) 0 var(--space-4); padding-left: var(--space-6);">
-                ${SERRA_SUB_TABS.map(s => `
-                  <button class="pcp-serra-sub-tab-btn ${activeSerraSubTab === s.slug ? 'active' : ''}" data-serra-subtab="${s.slug}"
-                    style="font-size: var(--font-size-xs); font-weight: ${activeSerraSubTab === s.slug ? '600' : '400'}; color: ${activeSerraSubTab === s.slug ? 'var(--color-primary)' : 'var(--color-text-secondary)'}; border: none; background: transparent; border-bottom: 2px solid ${activeSerraSubTab === s.slug ? 'var(--color-primary)' : 'transparent'}; padding-bottom: 4px; transition: all var(--transition-fast);">
+            ${activeSubTab === 'secagem' ? `
+              <div class="pcp-secagem-sub-tabs" style="display: flex; gap: var(--space-4); margin: calc(-1 * var(--space-2)) 0 var(--space-4); padding-left: var(--space-6);">
+                ${SECAGEM_SUB_TABS.map(s => `
+                  <button class="pcp-secagem-sub-tab-btn ${activeSecagemSubTab === s.slug ? 'active' : ''}" data-secagem-subtab="${s.slug}"
+                    style="font-size: var(--font-size-xs); font-weight: ${activeSecagemSubTab === s.slug ? '600' : '400'}; color: ${activeSecagemSubTab === s.slug ? 'var(--color-primary)' : 'var(--color-text-secondary)'}; border: none; background: transparent; border-bottom: 2px solid ${activeSecagemSubTab === s.slug ? 'var(--color-primary)' : 'transparent'}; padding-bottom: 4px; transition: all var(--transition-fast);">
                     ${s.label}
                   </button>
                 `).join('')}
@@ -273,32 +273,32 @@ export async function renderPCP(container = document.getElementById('view-pcp') 
         bindAmarracoesProducaoEvents();
       }
     });
-  } else if (activeMainTab === 'producao' && activeSubTab === 'secagem') {
+  } else if (activeMainTab === 'producao' && activeSubTab === 'secagem' && activeSecagemSubTab === 'producao') {
     document.getElementById('pcp-tab-content').innerHTML = renderActiveTabView();
     bindSecagemProducaoEvents();
 
     fetchSecagemProducao().then(() => {
-      if (activeMainTab === 'producao' && activeSubTab === 'secagem') {
+      if (activeMainTab === 'producao' && activeSubTab === 'secagem' && activeSecagemSubTab === 'producao') {
         document.getElementById('pcp-tab-content').innerHTML = renderActiveTabView();
         bindSecagemProducaoEvents();
       }
     });
-  } else if (activeMainTab === 'producao' && activeSubTab === 'serra' && activeSerraSubTab === 'producao') {
+  } else if (activeMainTab === 'producao' && activeSubTab === 'serra') {
     document.getElementById('pcp-tab-content').innerHTML = renderActiveTabView();
     bindSerraProducaoEvents();
 
     fetchSerraProducao().then(() => {
-      if (activeMainTab === 'producao' && activeSubTab === 'serra' && activeSerraSubTab === 'producao') {
+      if (activeMainTab === 'producao' && activeSubTab === 'serra') {
         document.getElementById('pcp-tab-content').innerHTML = renderActiveTabView();
         bindSerraProducaoEvents();
       }
     });
-  } else if (activeMainTab === 'producao' && activeSubTab === 'serra' && activeSerraSubTab === 'consumo') {
+  } else if (activeMainTab === 'producao' && activeSubTab === 'secagem' && activeSecagemSubTab === 'consumo') {
     document.getElementById('pcp-tab-content').innerHTML = renderActiveTabView();
     bindSerraConsumoEvents();
 
     fetchSerraConsumo().then(() => {
-      if (activeMainTab === 'producao' && activeSubTab === 'serra' && activeSerraSubTab === 'consumo') {
+      if (activeMainTab === 'producao' && activeSubTab === 'secagem' && activeSecagemSubTab === 'consumo') {
         document.getElementById('pcp-tab-content').innerHTML = renderActiveTabView();
         bindSerraConsumoEvents();
       }
@@ -316,18 +316,19 @@ function renderActiveTabView() {
   }
   
   if (activeMainTab === 'producao') {
-    if (activeSubTab === 'secagem') return renderSecagemProducaoView();
-    if (activeSubTab === 'serra') {
-      if (activeSerraSubTab === 'producao') return renderSerraProducaoView();
-      if (activeSerraSubTab === 'consumo') return renderSerraConsumoView();
-      const aba = SERRA_SUB_TABS.find(s => s.slug === activeSerraSubTab);
+    if (activeSubTab === 'secagem') {
+      // Consumo = lâminas secas consumidas na Serra (saída do estoque de lâminas secas)
+      if (activeSecagemSubTab === 'producao') return renderSecagemProducaoView();
+      if (activeSecagemSubTab === 'consumo') return renderSerraConsumoView();
+      const aba = SECAGEM_SUB_TABS.find(s => s.slug === activeSecagemSubTab);
       return `
         <div class="card" style="text-align: center; padding: var(--space-12); border-color: var(--color-border); background: var(--color-surface);">
-          <h3 style="font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); margin-bottom: var(--space-2); color: var(--color-text);">${aba ? aba.label : 'Serra'}</h3>
-          <p style="color: var(--color-text-secondary); max-width: 460px; margin: 0 auto; font-size: var(--font-size-sm);">Esta tela da Serra está em desenvolvimento.</p>
+          <h3 style="font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); margin-bottom: var(--space-2); color: var(--color-text);">${aba ? aba.label : 'Secagem'}</h3>
+          <p style="color: var(--color-text-secondary); max-width: 460px; margin: 0 auto; font-size: var(--font-size-sm);">Esta tela da Secagem está em desenvolvimento.</p>
         </div>
       `;
     }
+    if (activeSubTab === 'serra') return renderSerraProducaoView();
     return renderAmarracoesProducaoView();
   }
 
@@ -576,13 +577,13 @@ function bindPCPEvents() {
     });
   }
 
-  // 3º nível: PCP > Produção > Serra
-  document.querySelectorAll('.pcp-serra-sub-tab-btn').forEach(btn => {
+  // 3º nível: PCP > Produção > Secagem
+  document.querySelectorAll('.pcp-secagem-sub-tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      const sub = btn.dataset.serraSubtab;
-      if (activeSerraSubTab === sub) return;
-      activeSerraSubTab = sub;
-      sessionStorage.setItem('pcpActiveSerraSubTab', activeSerraSubTab);
+      const sub = btn.dataset.secagemSubtab;
+      if (activeSecagemSubTab === sub) return;
+      activeSecagemSubTab = sub;
+      sessionStorage.setItem('pcpActiveSecagemSubTab', activeSecagemSubTab);
       renderPCP();
     });
   });
