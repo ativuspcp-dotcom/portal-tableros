@@ -34,7 +34,7 @@ export async function fetchSecagemProducao(forceRefresh = false, loadMore = fals
     let query = supabase
       .from('secagem_apontamentos')
       .select(`
-        id, qrcode, data_apontamento, data_producao, local, turno, modo, especie, bitola,
+        id, qrcode, etiqueta_manual, data_apontamento, data_producao, local, turno, modo, especie, bitola,
         cod_item, item, altura_pecas, desconto, total, local_estoque, endereco,
         responsavel_nome, saida,
         pcp_op_secagem ( codigo_op )
@@ -87,7 +87,7 @@ export function renderSecagemProducaoView() {
 
         return `
         <tr>
-          <td style="padding: 2px 8px;"><div style="font-weight: 500;">${ap.qrcode || ap.id.substring(0, 8)}</div></td>
+          <td style="padding: 2px 8px;"><div style="font-weight: 500;">${ap.qrcode || ap.id.substring(0, 8)}${ap.etiqueta_manual ? ' <span class="badge badge-neutral" style="font-size: 9px;" title="Etiqueta pré-impressa (código manual, sem impressão)">Manual</span>' : ''}</div></td>
           <td style="padding: 2px 8px;">${dateTimeStr}</td>
           <td style="padding: 2px 8px;">
             <div style="font-weight: 500;">${ap.local}</div>
