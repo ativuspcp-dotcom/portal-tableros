@@ -47,7 +47,7 @@ window.addEventListener('serra_changed', () => {
 });
 
 window.addEventListener('serra_producao_changed', () => {
-  if (activeMainTab === 'producao' && activeSubTab === 'serra') {
+  if (activeMainTab === 'producao' && activeSubTab === 'serra' && activeSerraSubTab === 'producao') {
     document.getElementById('pcp-tab-content').innerHTML = renderActiveTabView();
     bindSerraProducaoEvents();
   }
@@ -56,7 +56,15 @@ window.addEventListener('serra_producao_changed', () => {
 // State
 let activeMainTab = sessionStorage.getItem('pcpActiveMainTab') || 'producao'; // 'cadastro', 'estrutura', 'op', 'mrp', 'estoque', 'producao'
 let activeSubTab = sessionStorage.getItem('pcpActiveSubTab') || 'amarracoes'; // 'lamina_verde', 'lamina_seca', 'compensado_inacabado', 'compensado_acabado', 'estoque_comp_acabado', 'amarracoes'
-let activeOpSubTab = sessionStorage.getItem('pcpActiveOpSubTab') || 'laminacao'; 
+let activeOpSubTab = sessionStorage.getItem('pcpActiveOpSubTab') || 'laminacao';
+let activeSerraSubTab = sessionStorage.getItem('pcpActiveSerraSubTab') || 'producao'; // 3º nível de PCP > Produção > Serra
+
+const SERRA_SUB_TABS = [
+  { slug: 'producao', label: 'Produção' },
+  { slug: 'consumo', label: 'Consumo' },
+  { slug: 'reclassificacao', label: 'Reclassificação' },
+  { slug: 'saidas_externas', label: 'Saídas Externas' }
+];
 let items = [];
 let filteredItems = [];
 let currentItem = null; // null for new, {id, ...} for edit
@@ -158,6 +166,16 @@ export async function renderPCP(container = document.getElementById('view-pcp') 
                 Serra
               </button>
             </div>
+            ${activeSubTab === 'serra' ? `
+              <div class="pcp-serra-sub-tabs" style="display: flex; gap: var(--space-4); margin: calc(-1 * var(--space-2)) 0 var(--space-4); padding-left: var(--space-6);">
+                ${SERRA_SUB_TABS.map(s => `
+                  <button class="pcp-serra-sub-tab-btn ${activeSerraSubTab === s.slug ? 'active' : ''}" data-serra-subtab="${s.slug}"
+                    style="font-size: var(--font-size-xs); font-weight: ${activeSerraSubTab === s.slug ? '600' : '400'}; color: ${activeSerraSubTab === s.slug ? 'var(--color-primary)' : 'var(--color-text-secondary)'}; border: none; background: transparent; border-bottom: 2px solid ${activeSerraSubTab === s.slug ? 'var(--color-primary)' : 'transparent'}; padding-bottom: 4px; transition: all var(--transition-fast);">
+                    ${s.label}
+                  </button>
+                `).join('')}
+              </div>
+            ` : ''}
           ` : activeMainTab === 'op' ? `
             <div class="pcp-sub-tabs" style="display: flex; gap: var(--space-4); margin-bottom: var(--space-4); border-bottom: 1px solid var(--color-border-light); padding-bottom: var(--space-2); padding-left: var(--space-2); overflow-x: auto; white-space: nowrap;">
               ${OP_SECTORS.map(s => `
@@ -257,12 +275,12 @@ export async function renderPCP(container = document.getElementById('view-pcp') 
         bindSecagemProducaoEvents();
       }
     });
-  } else if (activeMainTab === 'producao' && activeSubTab === 'serra') {
+  } else if (activeMainTab === 'producao' && activeSubTab === 'serra' && activeSerraSubTab === 'producao') {
     document.getElementById('pcp-tab-content').innerHTML = renderActiveTabView();
     bindSerraProducaoEvents();
 
     fetchSerraProducao().then(() => {
-      if (activeMainTab === 'producao' && activeSubTab === 'serra') {
+      if (activeMainTab === 'producao' && activeSubTab === 'serra' && activeSerraSubTab === 'producao') {
         document.getElementById('pcp-tab-content').innerHTML = renderActiveTabView();
         bindSerraProducaoEvents();
       }
@@ -281,7 +299,16 @@ function renderActiveTabView() {
   
   if (activeMainTab === 'producao') {
     if (activeSubTab === 'secagem') return renderSecagemProducaoView();
-    if (activeSubTab === 'serra') return renderSerraProducaoView();
+    if (activeSubTab === 'serra') {
+      if (activeSerraSubTab === 'producao') return renderSerraProducaoView();
+      const aba = SERRA_SUB_TABS.find(s => s.slug === activeSerraSubTab);
+      return `
+        <div class="card" style="text-align: center; padding: var(--space-12); border-color: var(--color-border); background: var(--color-surface);">
+          <h3 style="font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); margin-bottom: var(--space-2); color: var(--color-text);">${aba ? aba.label : 'Serra'}</h3>
+          <p style="color: var(--color-text-secondary); max-width: 460px; margin: 0 auto; font-size: var(--font-size-sm);">Esta tela da Serra está em desenvolvimento.</p>
+        </div>
+      `;
+    }
     return renderAmarracoesProducaoView();
   }
 
@@ -529,6 +556,17 @@ function bindPCPEvents() {
       });
     });
   }
+
+  // 3º nível: PCP > Produção > Serra
+  document.querySelectorAll('.pcp-serra-sub-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const sub = btn.dataset.serraSubtab;
+      if (activeSerraSubTab === sub) return;
+      activeSerraSubTab = sub;
+      sessionStorage.setItem('pcpActiveSerraSubTab', activeSerraSubTab);
+      renderPCP();
+    });
+  });
 
   // OP Sub level 2 tabs
   const opSubTabs = document.querySelectorAll('.pcp-op-sub-tab-btn');
