@@ -19,9 +19,9 @@ const isTelaSetor = () => activeMainTab === 'pcp' && (activePcpSubTab === 'secag
 const LOCAIS_ESTOQUE = ['CONSUMIR', 'RESSECAR', 'SERRAR'];
 const LOCAIS_ESTOQUE_SERRA = ['CONSUMIR', 'MERCADO INTERNO'];
 
-// A Serra reutiliza as tabelas de medidas e regras da Secagem com secador = 'SERRA' (na Serra, as colunas
-// "setup" guardam a medida escolhida no apontamento). A sub-aba Secagem esconde a SERRA; a Serra mostra só ela.
-const SERRA = 'SERRA';
+// As serras (SERRA 1, SERRA 2...) reutilizam as tabelas de medidas e regras da Secagem com secador = nome da
+// serra (na Serra, as colunas "setup" guardam a medida escolhida no apontamento). A sub-aba Secagem esconde as
+// serras (nomes de pcp_serras); a sub-aba Serra mostra só elas.
 const MODOS_CUBAGEM = ['PEÇAS', 'ALTURA'];
 const CLASSES = ['CAPA', 'ENCHIMENTO', 'MIOLO'];
 const ORDEM_OPCOES = ['A', 'B', 'C', 'CP', 'D', 'L', 'G', 'CASCA'];
@@ -36,6 +36,7 @@ let activePcpSubTab = sessionStorage.getItem('configActivePcpSubTab') || 'secage
 let regrasCubagem = [];
 let medidasSetup = [];
 let secadoresCadastrados = [];
+let serrasCadastradas = [];
 let selectedSecador = null;
 let selectedComboKey = null;
 let editingId = null;
@@ -99,6 +100,7 @@ export async function renderConfiguracoes(container = document.getElementById('v
   if (isTelaSetor()) {
     // Sequencial de propósito: não usar Promise.all em várias chamadas supabase.from()
     await fetchSecadoresCadastrados();
+    await fetchSerrasCadastradas();
     await fetchMedidasSetup();
     await fetchRegrasCubagem();
     refreshView();
@@ -195,14 +197,33 @@ async function fetchSecadoresCadastrados() {
   }
 }
 
-/** Secadores cadastrados (qualquer filial) + qualquer um que já tenha medida ou regra gravada. */
+async function fetchSerrasCadastradas() {
+  try {
+    const { data, error } = await supabase
+      .from('pcp_serras')
+      .select('nome')
+      .eq('ativo', true)
+      .order('nome');
+
+    if (error) throw error;
+    serrasCadastradas = [...new Set((data || []).map(s => s.nome))];
+  } catch (error) {
+    console.error('Error fetching serras:', error);
+    showToast('Erro ao carregar serras', 'error');
+  }
+}
+
+/**
+ * Sub-aba Secagem: secadores cadastrados (qualquer filial) + qualquer um que já tenha medida ou regra gravada,
+ * sem as serras. Sub-aba Serra: as serras cadastradas (qualquer filial).
+ */
 function secadoresConhecidos() {
-  if (activePcpSubTab === 'serra') return [SERRA];
+  if (activePcpSubTab === 'serra') return [...serrasCadastradas].sort();
   return [...new Set([
     ...secadoresCadastrados,
     ...medidasSetup.map(m => m.secador),
     ...regrasCubagem.map(r => r.secador)
-  ])].filter(s => s !== SERRA).sort();
+  ])].filter(s => !serrasCadastradas.includes(s)).sort();
 }
 
 /** Medidas de setup do secador (tabela pcp_secagem_setup_medidas) + medidas que só tenham regra no banco. */
@@ -330,16 +351,15 @@ function renderSecagemConfig() {
 
   return `
     <div style="max-width: 1500px; margin: 0 auto; width: 100%;">
-      ${isSerra ? '' : `
       <div class="card" style="padding: var(--space-3) var(--space-4); margin-bottom: var(--space-6); border-color: var(--color-border); background: var(--color-surface); display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap;">
-        <span style="font-size: var(--font-size-xs); font-weight: 600; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Secador</span>
+        <span style="font-size: var(--font-size-xs); font-weight: 600; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">${isSerra ? 'Serra' : 'Secador'}</span>
         ${secadorBtns}
-      </div>`}
+      </div>
 
       <div style="margin-bottom: var(--space-3);">
         <h3 style="font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); color: var(--color-text); margin: 0;">${isSerra ? 'Medidas do apontamento' : 'Medidas do setup'}</h3>
         <p style="font-size: var(--font-size-sm); color: var(--color-text-secondary); margin: 4px 0 0;">${isSerra
-          ? 'Combinações de comprimento × largura que o apontador pode escolher no apontamento da Serra (a Serra não tem comprimento/largura no setup). Desativar tira a medida da tela do apontamento sem apagar o histórico.'
+          ? `Combinações de comprimento × largura que o apontador pode escolher no apontamento da ${esc(selectedSecador)} (a serra não tem comprimento/largura no setup). Desativar tira a medida da tela do apontamento sem apagar o histórico.`
           : `Combinações de comprimento × largura que o apontador pode escolher ao definir o setup do secador ${esc(selectedSecador)}. Desativar tira a medida das telas de setup sem apagar o histórico.`}</p>
       </div>
 
@@ -375,7 +395,7 @@ function renderSecagemConfig() {
       <div style="margin-bottom: var(--space-3);">
         <h3 style="font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); color: var(--color-text); margin: 0;">Regras de apontamento</h3>
         <p style="font-size: var(--font-size-sm); color: var(--color-text-secondary); margin: 4px 0 0;">${isSerra
-          ? 'Opções, modo de cubagem e desconto oferecidos no apontamento da Produção Serra, por medida escolhida.'
+          ? 'Opções, modo de cubagem e desconto oferecidos no apontamento da Produção Serra, por serra e medida escolhida.'
           : 'Opções, modo de cubagem e desconto oferecidos no apontamento da Produção Secagem, por secador e medida do setup.'}</p>
       </div>
 

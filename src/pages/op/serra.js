@@ -5,14 +5,16 @@ import { getBPLID } from '../../auth/auth.js';
 import { hasModuleAccess } from '../../utils/permissions.js';
 import { SETUP_OPCOES } from './secagem.js';
 
-// Setup da Serra: uma única serra por filial (tabela pcp_serras). Espécie/bitola/turno são as mesmas
-// listas dos secadores (SETUP_OPCOES em op/secagem.js); tipo é só PRODUÇÃO. Comprimento e largura NÃO
-// fazem parte do setup: são informados no apontamento. A validação de verdade é da função do banco
-// salvar_setup_serra (lista repetida lá e no app-operacional, setup-serra.js).
+// Setup das serras (SERRA 1, SERRA 2...): mesmo padrão dos secadores. Cada serra cadastrada na filial
+// (tabela pcp_serras) tem um setup ativo próprio. Espécie/bitola/turno são as mesmas listas dos secadores
+// (SETUP_OPCOES em op/secagem.js); tipo é só PRODUÇÃO. Comprimento e largura NÃO fazem parte do setup: são
+// informados no apontamento. A validação de verdade é da função do banco salvar_setup_serra (lista repetida
+// lá e no app-operacional, setup-serra.js).
 const TIPOS = ['PRODUÇÃO'];
 
-let temSerra = false;
+let serras = [];
 let serraOps = [];
+let filterSerra = 'Todas';
 let filterStatus = 'Ativa';
 
 function fmtBitola(v) {
@@ -24,11 +26,12 @@ export async function fetchSerraOps(forceRefresh = false) {
     // Sequencial de propósito: não usar Promise.all em várias chamadas supabase.from()
     const { data: serraData, error: serraError } = await supabase
       .from('pcp_serras')
-      .select('bpl_id')
+      .select('nome')
       .eq('bpl_id', getBPLID())
-      .eq('ativo', true);
+      .eq('ativo', true)
+      .order('nome');
     if (serraError) throw serraError;
-    temSerra = (serraData || []).length > 0;
+    serras = (serraData || []).map(s => s.nome);
 
     const { data, error } = await supabase
       .from('pcp_op_serra')
@@ -43,14 +46,14 @@ export async function fetchSerraOps(forceRefresh = false) {
   }
 }
 
-function getActiveOp() {
-  return serraOps.find(op => op.status === 'Ativa') || null;
+function getActiveOp(serra) {
+  return serraOps.find(op => op.serra === serra && op.status === 'Ativa') || null;
 }
 
 export function renderSerraView() {
   const canActions = hasModuleAccess('pcp', 'can_actions');
 
-  if (!temSerra) {
+  if (serras.length === 0) {
     return `
       <div class="card" style="text-align: center; padding: var(--space-12); border-color: var(--color-border); background: var(--color-surface);">
         <h3 style="font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); margin-bottom: var(--space-2); color: var(--color-text);">Serra</h3>
@@ -59,42 +62,50 @@ export function renderSerraView() {
     `;
   }
 
-  const op = getActiveOp();
+  if (filterSerra !== 'Todas' && !serras.includes(filterSerra)) filterSerra = 'Todas';
 
-  const cardHtml = `
-    <div class="card serra-card" style="padding: var(--space-4); border-color: var(--color-border); background: var(--color-surface); cursor: ${canActions ? 'pointer' : 'default'}; max-width: 420px; margin-bottom: var(--space-6);">
-      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: var(--space-3);">
-        <div>
-          <div style="font-size: var(--font-size-xs); color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Setor</div>
-          <div style="font-size: 1.25rem; font-weight: 700; color: var(--color-text);">SERRA</div>
+  const cardsHtml = serras.map(serra => {
+    const op = getActiveOp(serra);
+    return `
+      <div class="card serra-card" data-serra="${serra}" style="padding: var(--space-4); border-color: var(--color-border); background: var(--color-surface); cursor: ${canActions ? 'pointer' : 'default'}; transition: box-shadow var(--transition-fast), border-color var(--transition-fast);">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: var(--space-3);">
+          <div>
+            <div style="font-size: var(--font-size-xs); color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Serra</div>
+            <div style="font-size: 1.25rem; font-weight: 700; color: var(--color-text);">${serra}</div>
+          </div>
+          <span class="badge ${op ? 'badge-success' : 'badge-neutral'}">${op ? 'ATIVA · ' + op.codigo_op : 'SEM SETUP'}</span>
         </div>
-        <span class="badge ${op ? 'badge-success' : 'badge-neutral'}">${op ? 'ATIVA · ' + op.codigo_op : 'SEM SETUP'}</span>
+        ${op ? `
+          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-2) var(--space-4); font-size: var(--font-size-sm);">
+            <div><span style="color: var(--color-text-secondary);">Tipo:</span> <strong>${op.tipo}</strong></div>
+            <div><span style="color: var(--color-text-secondary);">Espécie:</span> <strong>${op.especie}</strong></div>
+            <div><span style="color: var(--color-text-secondary);">Bitola:</span> <strong>${fmtBitola(op.bitola)} mm</strong></div>
+            <div><span style="color: var(--color-text-secondary);">Turno:</span> <strong>${op.turno}</strong></div>
+          </div>
+        ` : `
+          <p style="color: var(--color-text-secondary); font-size: var(--font-size-sm); margin: 0;">Nenhum setup definido para esta serra. Clique para configurar e abrir a primeira ordem de produção.</p>
+        `}
+        ${canActions ? `
+          <div style="margin-top: var(--space-3); text-align: right;">
+            <span class="btn btn-secondary btn-sm" style="pointer-events: none;">${op ? 'Alterar Setup' : 'Definir Setup'}</span>
+          </div>
+        ` : ''}
       </div>
-      ${op ? `
-        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-2) var(--space-4); font-size: var(--font-size-sm);">
-          <div><span style="color: var(--color-text-secondary);">Tipo:</span> <strong>${op.tipo}</strong></div>
-          <div><span style="color: var(--color-text-secondary);">Espécie:</span> <strong>${op.especie}</strong></div>
-          <div><span style="color: var(--color-text-secondary);">Bitola:</span> <strong>${fmtBitola(op.bitola)} mm</strong></div>
-          <div><span style="color: var(--color-text-secondary);">Turno:</span> <strong>${op.turno}</strong></div>
-        </div>
-      ` : `
-        <p style="color: var(--color-text-secondary); font-size: var(--font-size-sm); margin: 0;">Nenhum setup definido para a serra. Clique para configurar e abrir a primeira ordem de produção.</p>
-      `}
-      ${canActions ? `
-        <div style="margin-top: var(--space-3); text-align: right;">
-          <span class="btn btn-secondary btn-sm" style="pointer-events: none;">${op ? 'Alterar Setup' : 'Definir Setup'}</span>
-        </div>
-      ` : ''}
-    </div>
-  `;
+    `;
+  }).join('');
 
-  const filteredOps = serraOps.filter(o => filterStatus === 'Todas' || o.status === filterStatus);
+  const filteredOps = serraOps.filter(o => {
+    const matchSerra = filterSerra === 'Todas' || o.serra === filterSerra;
+    const matchStatus = filterStatus === 'Todas' || o.status === filterStatus;
+    return matchSerra && matchStatus;
+  });
 
   const rowsHtml = filteredOps.length === 0
-    ? `<tr><td colspan="7" style="text-align: center; padding: var(--space-8); color: var(--color-text-secondary);">Nenhuma ordem de produção encontrada.</td></tr>`
+    ? `<tr><td colspan="8" style="text-align: center; padding: var(--space-8); color: var(--color-text-secondary);">Nenhuma ordem de produção encontrada.</td></tr>`
     : filteredOps.map(o => `
         <tr>
           <td style="font-weight: 600; color: var(--color-primary);">${o.codigo_op || '-'}</td>
+          <td><span class="badge" style="background: var(--color-surface-alt); border: 1px solid var(--color-border); color: var(--color-text);">${o.serra}</span></td>
           <td>${o.tipo}</td>
           <td>${o.especie}</td>
           <td>${fmtBitola(o.bitola)} mm</td>
@@ -106,10 +117,16 @@ export function renderSerraView() {
 
   return `
     <div style="max-width: 1500px; margin: 0 auto; width: 100%;">
-      ${cardHtml}
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: var(--space-4); margin-bottom: var(--space-6);">
+        ${cardsHtml}
+      </div>
 
       <div class="toolbar" style="margin-bottom: var(--space-4); display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; justify-content: space-between;">
         <div class="toolbar-left" style="display: flex; flex-wrap: wrap; gap: var(--space-2);">
+          <select id="serra-filter-serra" class="filter-select" style="font-size: var(--font-size-sm); height: 34px;">
+            <option value="Todas" ${filterSerra === 'Todas' ? 'selected' : ''}>Todas as Serras</option>
+            ${serras.map(s => `<option value="${s}" ${filterSerra === s ? 'selected' : ''}>${s}</option>`).join('')}
+          </select>
           <select id="serra-filter-status" class="filter-select" style="font-size: var(--font-size-sm); height: 34px;">
             <option value="Todas" ${filterStatus === 'Todas' ? 'selected' : ''}>Todas as OPs</option>
             <option value="Ativa" ${filterStatus === 'Ativa' ? 'selected' : ''}>Ativas</option>
@@ -130,6 +147,7 @@ export function renderSerraView() {
             <thead>
               <tr>
                 <th style="font-size: var(--font-size-xs);">OP</th>
+                <th style="font-size: var(--font-size-xs);">Serra</th>
                 <th style="font-size: var(--font-size-xs);">Tipo</th>
                 <th style="font-size: var(--font-size-xs);">Espécie</th>
                 <th style="font-size: var(--font-size-xs);">Bitola</th>
@@ -149,9 +167,11 @@ export function renderSerraView() {
 }
 
 export function bindSerraEvents() {
-  document.querySelector('.serra-card')?.addEventListener('click', () => {
-    if (!hasModuleAccess('pcp', 'can_actions')) return;
-    showSerraSetupModal();
+  document.querySelectorAll('.serra-card').forEach(card => {
+    card.addEventListener('click', () => {
+      if (!hasModuleAccess('pcp', 'can_actions')) return;
+      showSerraSetupModal(card.dataset.serra);
+    });
   });
 
   const btnRefresh = document.getElementById('btn-refresh-serra');
@@ -165,6 +185,11 @@ export function bindSerraEvents() {
     });
   }
 
+  document.getElementById('serra-filter-serra')?.addEventListener('change', (e) => {
+    filterSerra = e.target.value;
+    window.dispatchEvent(new Event('serra_changed'));
+  });
+
   document.getElementById('serra-filter-status')?.addEventListener('change', (e) => {
     filterStatus = e.target.value;
     window.dispatchEvent(new Event('serra_changed'));
@@ -175,8 +200,8 @@ function optionsHtml(values, formatter, selectedValue) {
   return values.map(v => `<option value="${v}" ${selectedValue !== undefined && String(selectedValue) === String(v) ? 'selected' : ''}>${formatter(v)}</option>`).join('');
 }
 
-async function showSerraSetupModal() {
-  const activeOp = getActiveOp();
+async function showSerraSetupModal(serra) {
+  const activeOp = getActiveOp(serra);
 
   let temApontamentos = false;
   if (activeOp) {
@@ -240,7 +265,7 @@ async function showSerraSetupModal() {
     </form>
   `;
 
-  openModal('Setup da Serra', modalBody, `<button class="btn btn-primary" id="btn-save-serra-setup" disabled>Salvar Setup</button>`, { maxWidth: '620px' });
+  openModal(`Setup da ${serra}`, modalBody, `<button class="btn btn-primary" id="btn-save-serra-setup" disabled>Salvar Setup</button>`, { maxWidth: '620px' });
 
   const pinInput = document.getElementById('sr-pin');
   const respInput = document.getElementById('sr-responsavel');
@@ -302,7 +327,7 @@ async function showSerraSetupModal() {
 
     let falhou = false;
     try {
-      falhou = !(await saveSerraSetup(activeOp, pinInput.value, pinErro));
+      falhou = !(await saveSerraSetup(serra, activeOp, pinInput.value, pinErro));
     } finally {
       btn.innerHTML = originalText;
       pinInput.disabled = false;
@@ -313,7 +338,7 @@ async function showSerraSetupModal() {
 }
 
 // Retorna false quando o salvamento falhou e o modal deve continuar aberto (pede o PIN de novo).
-async function saveSerraSetup(activeOp, pin, pinErro) {
+async function saveSerraSetup(serra, activeOp, pin, pinErro) {
   const payload = {
     tipo: document.getElementById('sr-tipo').value,
     especie: document.getElementById('sr-especie').value,
@@ -335,6 +360,7 @@ async function saveSerraSetup(activeOp, pin, pinErro) {
     // A função do banco valida o PIN e as regras e troca o setup de forma atômica
     // (a OP anterior sai e a nova entra na mesma transação: nunca fica sem setup ativo).
     const { data, error } = await supabase.rpc('salvar_setup_serra', {
+      p_serra: serra,
       p_pin: pin,
       p_tipo: payload.tipo,
       p_especie: payload.especie,
@@ -349,7 +375,7 @@ async function saveSerraSetup(activeOp, pin, pinErro) {
       return false;
     }
 
-    showToast(`Setup da serra atualizado. Nova OP ${data[0].codigo_op} aberta.`, 'success');
+    showToast(`Setup da ${serra} atualizado. Nova OP ${data[0].codigo_op} aberta.`, 'success');
     closeModal();
     await fetchSerraOps(true);
     window.dispatchEvent(new Event('serra_changed'));

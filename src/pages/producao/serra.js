@@ -34,7 +34,7 @@ export async function fetchSerraProducao(forceRefresh = false, loadMore = false)
     let query = supabase
       .from('serra_apontamentos')
       .select(`
-        id, qrcode, data_apontamento, data_producao, turno, modo, especie, bitola,
+        id, qrcode, data_apontamento, data_producao, local, turno, modo, especie, bitola,
         comprimento, largura, cod_item, item, altura_pecas, desconto, total, local_estoque, endereco,
         responsavel_nome, saida,
         pcp_op_serra ( codigo_op )
@@ -46,7 +46,7 @@ export async function fetchSerraProducao(forceRefresh = false, loadMore = false)
 
     if (searchQuery) {
       const sq = `%${searchQuery}%`;
-      query = query.or(`qrcode.ilike.${sq},item.ilike.${sq},cod_item.ilike.${sq}`);
+      query = query.or(`qrcode.ilike.${sq},item.ilike.${sq},cod_item.ilike.${sq},local.ilike.${sq}`);
     }
 
     const { data, error } = await query;
@@ -89,7 +89,10 @@ export function renderSerraProducaoView() {
         <tr>
           <td style="padding: 4px 8px;"><div style="font-weight: 500;">${ap.qrcode || ap.id.substring(0, 8)}</div></td>
           <td style="padding: 4px 8px;">${dateTimeStr}</td>
-          <td style="padding: 4px 8px; font-weight: 500;">${opCodigo}</td>
+          <td style="padding: 4px 8px;">
+            <div style="font-weight: 500;">${ap.local}</div>
+            <div style="font-size: 10px; color: var(--color-text-secondary);">${opCodigo}</div>
+          </td>
           <td style="padding: 4px 8px; font-size: var(--font-size-xs);">${ap.turno}</td>
           <td style="padding: 4px 8px;">${ap.modo}</td>
           <td style="padding: 4px 8px;">${ap.especie}<br><span style="font-size: 10px; color: var(--color-text-secondary);">${fmtBitola(ap.bitola)} mm</span></td>
@@ -144,7 +147,7 @@ export function renderSerraProducaoView() {
         </div>
 
         <div style="display: flex; flex-direction: column; gap: 4px; flex: 1; max-width: 300px;">
-          <label style="font-size: var(--font-size-xs); font-weight: 500; color: var(--color-text-secondary);">Pesquisar (Etiqueta, Cód. Item, Item)</label>
+          <label style="font-size: var(--font-size-xs); font-weight: 500; color: var(--color-text-secondary);">Pesquisar (Etiqueta, Cód. Item, Item, Serra)</label>
           <input type="text" id="serra-producao-search" class="form-input" style="height: 34px; font-size: var(--font-size-sm);" placeholder="Buscar..." value="${searchQuery}">
         </div>
 
@@ -164,7 +167,7 @@ export function renderSerraProducaoView() {
             <tr>
               <th style="font-size: var(--font-size-xs); padding: 6px 8px;">Etiqueta (QR)</th>
               <th style="font-size: var(--font-size-xs); padding: 6px 8px;">Data/Hora</th>
-              <th style="font-size: var(--font-size-xs); padding: 6px 8px;">OP</th>
+              <th style="font-size: var(--font-size-xs); padding: 6px 8px;">Serra / OP</th>
               <th style="font-size: var(--font-size-xs); padding: 6px 8px;">Turno</th>
               <th style="font-size: var(--font-size-xs); padding: 6px 8px;">Modo</th>
               <th style="font-size: var(--font-size-xs); padding: 6px 8px;">Espécie / Bitola</th>
