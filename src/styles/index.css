@@ -746,6 +746,20 @@ input, select, textarea {
   border-bottom: none;
 }
 
+/* Listas densas (Amarração, Produção, Consumo e OPs): menos espaço vertical entre as linhas */
+.table.table-compact th {
+  padding: var(--space-2) var(--space-3);
+}
+
+.table.table-compact td {
+  padding: var(--space-1) var(--space-3);
+}
+
+.table.table-compact .btn-icon {
+  width: 26px;
+  height: 26px;
+}
+
 .user-cell {
   display: flex;
   align-items: center;

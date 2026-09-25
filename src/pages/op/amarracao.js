@@ -174,7 +174,7 @@ export function renderAmarracaoView() {
     
     <div class="card" style="border-color: var(--color-border); background: var(--color-surface); display: flex; flex-direction: column; padding: 0; overflow: hidden;">
       <div class="table-container" style="flex: 1;">
-        <table class="table">
+        <table class="table table-compact">
           <thead>
             <tr>
               <th style="font-size: var(--font-size-xs);">OP</th>

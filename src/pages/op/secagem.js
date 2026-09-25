@@ -172,7 +172,7 @@ export function renderSecagemView() {
 
       <div class="card" style="border-color: var(--color-border); background: var(--color-surface); padding: 0; overflow: hidden;">
         <div class="table-container">
-          <table class="table">
+          <table class="table table-compact">
             <thead>
               <tr>
                 <th style="font-size: var(--font-size-xs);">OP</th>

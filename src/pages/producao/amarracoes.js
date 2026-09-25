@@ -104,24 +104,24 @@ export function renderAmarracoesProducaoView() {
         
         return `
         <tr>
-          <td style="padding: 4px 8px;"><div style="font-weight: 500;">${pkg.qrcode || pkg.id.substring(0,8)}</div></td>
-          <td style="padding: 4px 8px;">${dateTimeStr}</td>
-          <td style="padding: 4px 8px;">${opName}</td>
-          <td style="padding: 4px 8px;">
+          <td style="padding: 2px 8px;"><div style="font-weight: 500;">${pkg.qrcode || pkg.id.substring(0,8)}</div></td>
+          <td style="padding: 2px 8px;">${dateTimeStr}</td>
+          <td style="padding: 2px 8px;">${opName}</td>
+          <td style="padding: 2px 8px;">
             <div style="font-size: 10px; color: var(--color-text-secondary); font-weight: 600;">${pkg.cod_item || 'S/N'}</div>
             <div style="font-weight: 500;">${pkg.nome_item}</div>
           </td>
-          <td style="padding: 4px 8px;">${pkg.qualidade || '-'}</td>
-          <td style="padding: 4px 8px; text-align: center;">${pkg.pecas || 0}</td>
-          <td style="padding: 4px 8px; text-align: center;">${(pkg.total_calc || 0).toFixed(4)}</td>
-          <td style="padding: 4px 8px; text-align: center;">${pkg.peso ? pkg.peso + ' kg' : '-'}</td>
-          <td style="padding: 4px 8px;">${pkg.responsavel_nome || '-'}</td>
-          <td style="padding: 4px 8px; text-align: center;">
+          <td style="padding: 2px 8px;">${pkg.qualidade || '-'}</td>
+          <td style="padding: 2px 8px; text-align: center;">${pkg.pecas || 0}</td>
+          <td style="padding: 2px 8px; text-align: center;">${(pkg.total_calc || 0).toFixed(4)}</td>
+          <td style="padding: 2px 8px; text-align: center;">${pkg.peso ? pkg.peso + ' kg' : '-'}</td>
+          <td style="padding: 2px 8px;">${pkg.responsavel_nome || '-'}</td>
+          <td style="padding: 2px 8px; text-align: center;">
             <span class="badge ${isSaida ? 'badge-success' : 'badge-warning'}">
               ${isSaida ? 'Saída Realizada' : 'Em Estoque'}
             </span>
           </td>
-          <td style="padding: 4px 8px; text-align: right;">
+          <td style="padding: 2px 8px; text-align: right;">
             ${!isSaida ? `
               <button class="btn btn-ghost btn-icon btn-delete-amarracao" data-id="${pkg.id}" title="Excluir Pacote (Estorno)">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--color-error);"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
@@ -169,20 +169,20 @@ export function renderAmarracoesProducaoView() {
     
     <div class="card" style="border-color: var(--color-border); background: var(--color-surface); display: flex; flex-direction: column; padding: 0; overflow: hidden;">
       <div class="table-container" style="flex: 1;">
-        <table class="table">
+        <table class="table table-compact">
           <thead>
             <tr>
-              <th style="font-size: var(--font-size-xs); padding: 6px 8px;">Etiqueta (QR)</th>
-              <th style="font-size: var(--font-size-xs); padding: 6px 8px;">Data/Hora</th>
-              <th style="font-size: var(--font-size-xs); padding: 6px 8px;">OP</th>
-              <th style="font-size: var(--font-size-xs); padding: 6px 8px;">Item</th>
-              <th style="font-size: var(--font-size-xs); padding: 6px 8px;">Qualidade</th>
-              <th style="text-align: center; font-size: var(--font-size-xs); padding: 6px 8px;">Peças</th>
-              <th style="text-align: center; font-size: var(--font-size-xs); padding: 6px 8px;">Volume (m³)</th>
-              <th style="text-align: center; font-size: var(--font-size-xs); padding: 6px 8px;">Peso</th>
-              <th style="font-size: var(--font-size-xs); padding: 6px 8px;">Apontador</th>
-              <th style="text-align: center; font-size: var(--font-size-xs); padding: 6px 8px;">Status</th>
-              <th style="text-align: right; font-size: var(--font-size-xs); padding: 6px 8px;">Ações</th>
+              <th style="font-size: var(--font-size-xs); padding: 4px 8px;">Etiqueta (QR)</th>
+              <th style="font-size: var(--font-size-xs); padding: 4px 8px;">Data/Hora</th>
+              <th style="font-size: var(--font-size-xs); padding: 4px 8px;">OP</th>
+              <th style="font-size: var(--font-size-xs); padding: 4px 8px;">Item</th>
+              <th style="font-size: var(--font-size-xs); padding: 4px 8px;">Qualidade</th>
+              <th style="text-align: center; font-size: var(--font-size-xs); padding: 4px 8px;">Peças</th>
+              <th style="text-align: center; font-size: var(--font-size-xs); padding: 4px 8px;">Volume (m³)</th>
+              <th style="text-align: center; font-size: var(--font-size-xs); padding: 4px 8px;">Peso</th>
+              <th style="font-size: var(--font-size-xs); padding: 4px 8px;">Apontador</th>
+              <th style="text-align: center; font-size: var(--font-size-xs); padding: 4px 8px;">Status</th>
+              <th style="text-align: right; font-size: var(--font-size-xs); padding: 4px 8px;">Ações</th>
             </tr>
           </thead>
           <tbody id="amarracoes-tbody">

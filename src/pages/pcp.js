@@ -11,6 +11,7 @@ import { fetchAmarracoesProducao, renderAmarracoesProducaoView, bindAmarracoesPr
 import { fetchSecagemProducao, renderSecagemProducaoView, bindSecagemProducaoEvents } from './producao/secagem.js';
 import { fetchSerraOps, renderSerraView, bindSerraEvents } from './op/serra.js';
 import { fetchSerraProducao, renderSerraProducaoView, bindSerraProducaoEvents } from './producao/serra.js';
+import { fetchSerraConsumo, renderSerraConsumoView, bindSerraConsumoEvents } from './producao/serra-consumo.js';
 
 window.addEventListener('amarracao_created', () => {
   if (activeMainTab === 'op' && activeOpSubTab === 'amarracao') {
@@ -50,6 +51,13 @@ window.addEventListener('serra_producao_changed', () => {
   if (activeMainTab === 'producao' && activeSubTab === 'serra' && activeSerraSubTab === 'producao') {
     document.getElementById('pcp-tab-content').innerHTML = renderActiveTabView();
     bindSerraProducaoEvents();
+  }
+});
+
+window.addEventListener('serra_consumo_changed', () => {
+  if (activeMainTab === 'producao' && activeSubTab === 'serra' && activeSerraSubTab === 'consumo') {
+    document.getElementById('pcp-tab-content').innerHTML = renderActiveTabView();
+    bindSerraConsumoEvents();
   }
 });
 
@@ -285,6 +293,16 @@ export async function renderPCP(container = document.getElementById('view-pcp') 
         bindSerraProducaoEvents();
       }
     });
+  } else if (activeMainTab === 'producao' && activeSubTab === 'serra' && activeSerraSubTab === 'consumo') {
+    document.getElementById('pcp-tab-content').innerHTML = renderActiveTabView();
+    bindSerraConsumoEvents();
+
+    fetchSerraConsumo().then(() => {
+      if (activeMainTab === 'producao' && activeSubTab === 'serra' && activeSerraSubTab === 'consumo') {
+        document.getElementById('pcp-tab-content').innerHTML = renderActiveTabView();
+        bindSerraConsumoEvents();
+      }
+    });
   }
 }
 
@@ -301,6 +319,7 @@ function renderActiveTabView() {
     if (activeSubTab === 'secagem') return renderSecagemProducaoView();
     if (activeSubTab === 'serra') {
       if (activeSerraSubTab === 'producao') return renderSerraProducaoView();
+      if (activeSerraSubTab === 'consumo') return renderSerraConsumoView();
       const aba = SERRA_SUB_TABS.find(s => s.slug === activeSerraSubTab);
       return `
         <div class="card" style="text-align: center; padding: var(--space-12); border-color: var(--color-border); background: var(--color-surface);">
