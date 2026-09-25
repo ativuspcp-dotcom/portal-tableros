@@ -13,6 +13,11 @@ import { printRomaneioReport } from '../components/romaneio-report.js';
 let activeMainTab = sessionStorage.getItem('expedicaoActiveMainTab') || 'ordem_carregamento'; // 'dashboard', 'ordem_carregamento'
 let activeSubTab = sessionStorage.getItem('expedicaoActiveSubTab') || 'remessa_armazem'; // 'remessa_armazem'
 
+// Nível entre "Ordem de Carregamento" e as abas Remessa/Transf. Interna/Mercado Interno. Hoje só existe
+// Compensado (as três abas abaixo pertencem a ele); outros grupos entram aqui quando forem criados.
+const GRUPOS_ORDEM = [{ slug: 'compensado', label: 'Compensado' }];
+let activeGrupo = sessionStorage.getItem('expedicaoActiveGrupo') || 'compensado';
+
 let remessasCache = [];
 export let transferenciasCache = [];
 export let mercadoInternoCache = [];
@@ -201,17 +206,25 @@ export async function renderExpedicao(container = document.getElementById('view-
 
           <!-- Secondary Navigation Tabs -->
           ${activeMainTab === 'ordem_carregamento' ? `
-            <div class="expedicao-sub-tabs" style="display: flex; gap: var(--space-4); margin-bottom: var(--space-4); border-bottom: 1px solid var(--color-border-light); padding-bottom: var(--space-2); padding-left: var(--space-2);">
+            <div class="expedicao-grupo-tabs" style="display: flex; gap: var(--space-4); margin-bottom: var(--space-4); border-bottom: 1px solid var(--color-border-light); padding-bottom: var(--space-2); padding-left: var(--space-2);">
+              ${GRUPOS_ORDEM.map(g => `
+                <button class="expedicao-grupo-tab-btn ${activeGrupo === g.slug ? 'active' : ''}" data-grupo="${g.slug}"
+                  style="font-size: var(--font-size-sm); font-weight: ${activeGrupo === g.slug ? '600' : '400'}; color: ${activeGrupo === g.slug ? 'var(--color-primary)' : 'var(--color-text-secondary)'}; border: none; background: transparent; border-bottom: 2px solid ${activeGrupo === g.slug ? 'var(--color-primary)' : 'transparent'}; padding-bottom: 4px; transition: all var(--transition-fast);">
+                  ${g.label}
+                </button>
+              `).join('')}
+            </div>
+            <div class="expedicao-sub-tabs" style="display: flex; gap: var(--space-4); margin: calc(-1 * var(--space-2)) 0 var(--space-4); padding-left: var(--space-6);">
               <button class="expedicao-sub-tab-btn ${activeSubTab === 'remessa_armazem' ? 'active' : ''}" data-subtab="remessa_armazem" 
-                style="font-size: var(--font-size-sm); font-weight: ${activeSubTab === 'remessa_armazem' ? '600' : '400'}; color: ${activeSubTab === 'remessa_armazem' ? 'var(--color-primary)' : 'var(--color-text-secondary)'}; border: none; background: transparent; border-bottom: 2px solid ${activeSubTab === 'remessa_armazem' ? 'var(--color-primary)' : 'transparent'}; padding-bottom: 4px; transition: all var(--transition-fast);">
+                style="font-size: var(--font-size-xs); font-weight: ${activeSubTab === 'remessa_armazem' ? '600' : '400'}; color: ${activeSubTab === 'remessa_armazem' ? 'var(--color-primary)' : 'var(--color-text-secondary)'}; border: none; background: transparent; border-bottom: 2px solid ${activeSubTab === 'remessa_armazem' ? 'var(--color-primary)' : 'transparent'}; padding-bottom: 4px; transition: all var(--transition-fast);">
                 Remessa para Armazém
               </button>
               <button class="expedicao-sub-tab-btn ${activeSubTab === 'transferencia_interna' ? 'active' : ''}" data-subtab="transferencia_interna" 
-                style="font-size: var(--font-size-sm); font-weight: ${activeSubTab === 'transferencia_interna' ? '600' : '400'}; color: ${activeSubTab === 'transferencia_interna' ? 'var(--color-primary)' : 'var(--color-text-secondary)'}; border: none; background: transparent; border-bottom: 2px solid ${activeSubTab === 'transferencia_interna' ? 'var(--color-primary)' : 'transparent'}; padding-bottom: 4px; transition: all var(--transition-fast);">
+                style="font-size: var(--font-size-xs); font-weight: ${activeSubTab === 'transferencia_interna' ? '600' : '400'}; color: ${activeSubTab === 'transferencia_interna' ? 'var(--color-primary)' : 'var(--color-text-secondary)'}; border: none; background: transparent; border-bottom: 2px solid ${activeSubTab === 'transferencia_interna' ? 'var(--color-primary)' : 'transparent'}; padding-bottom: 4px; transition: all var(--transition-fast);">
                 Transf. Interna
               </button>
               <button class="expedicao-sub-tab-btn ${activeSubTab === 'mercado_interno' ? 'active' : ''}" data-subtab="mercado_interno" 
-                style="font-size: var(--font-size-sm); font-weight: ${activeSubTab === 'mercado_interno' ? '600' : '400'}; color: ${activeSubTab === 'mercado_interno' ? 'var(--color-primary)' : 'var(--color-text-secondary)'}; border: none; background: transparent; border-bottom: 2px solid ${activeSubTab === 'mercado_interno' ? 'var(--color-primary)' : 'transparent'}; padding-bottom: 4px; transition: all var(--transition-fast);">
+                style="font-size: var(--font-size-xs); font-weight: ${activeSubTab === 'mercado_interno' ? '600' : '400'}; color: ${activeSubTab === 'mercado_interno' ? 'var(--color-primary)' : 'var(--color-text-secondary)'}; border: none; background: transparent; border-bottom: 2px solid ${activeSubTab === 'mercado_interno' ? 'var(--color-primary)' : 'transparent'}; padding-bottom: 4px; transition: all var(--transition-fast);">
                 Mercado Interno
               </button>
             </div>
@@ -242,6 +255,18 @@ function bindExpedicaoEvents() {
         if (activeMainTab === 'ordem_carregamento') activeSubTab = 'remessa_armazem';
         sessionStorage.setItem('expedicaoActiveMainTab', activeMainTab);
         sessionStorage.setItem('expedicaoActiveSubTab', activeSubTab);
+        renderExpedicao();
+      }
+    });
+  });
+
+  // Grupo (Compensado)
+  document.querySelectorAll('.expedicao-grupo-tab-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const grupo = e.currentTarget.dataset.grupo;
+      if (grupo !== activeGrupo) {
+        activeGrupo = grupo;
+        sessionStorage.setItem('expedicaoActiveGrupo', activeGrupo);
         renderExpedicao();
       }
     });
