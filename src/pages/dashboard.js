@@ -64,6 +64,14 @@ export async function renderDashboard(container = document.getElementById('view-
             </div>
             ` : ''}
 
+            ${hasModuleAccess('qualidade', 'can_view') ? `
+            <div class="module-card qualidade" data-route="/qualidade">
+              <div class="module-card-icon">${getModuleIcon('qualidade')}</div>
+              <div class="module-card-title">Qualidade</div>
+              <div class="module-card-desc">Registros de qualidade por setor</div>
+            </div>
+            ` : ''}
+
             ${canManageUsers() ? `
             <div class="module-card admin" data-route="/users">
               <div class="module-card-icon">${getModuleIcon('admin')}</div>

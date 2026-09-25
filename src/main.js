@@ -14,6 +14,7 @@ import { renderPCP } from './pages/pcp.js';
 import { renderApontadores } from './pages/apontadores.js';
 import { renderSeguranca } from './pages/seguranca.js';
 import { renderConfiguracoes } from './pages/configuracoes.js';
+import { renderQualidade } from './pages/qualidade.js';
 
 console.log('Portal Tableros: Main entry loaded.');
 
@@ -28,6 +29,7 @@ route('/pcp', renderPCP);
 route('/apontadores', renderApontadores);
 route('/seguranca', renderSeguranca);
 route('/configuracoes', renderConfiguracoes);
+route('/qualidade', renderQualidade);
 
 // Set navigation guards
 setBeforeNavigate(async (path) => {
@@ -94,6 +96,13 @@ setBeforeNavigate(async (path) => {
 
   if (path === '/seguranca') {
     if (!hasModuleAccess('seguranca', 'can_view')) {
+      navigate('/dashboard');
+      return false;
+    }
+  }
+
+  if (path === '/qualidade') {
+    if (!hasModuleAccess('qualidade', 'can_view')) {
       navigate('/dashboard');
       return false;
     }

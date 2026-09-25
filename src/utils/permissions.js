@@ -111,7 +111,8 @@ export function getModuleBadgeClass(slug) {
     admin: 'badge-module-admin',
     logistica: 'badge-module-logistica',
     expedicao: 'badge-module-expedicao',
-    pcp: 'badge-module-pcp'
+    pcp: 'badge-module-pcp',
+    qualidade: 'badge-module-qualidade'
   };
   return classes[slug] || 'badge-gray';
 }
@@ -141,6 +142,10 @@ export function getModuleIcon(slug) {
     return `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sidebar-icon"><path d="M12 2l8 3v6c0 5-3.5 8.5-8 11-4.5-2.5-8-6-8-11V5l8-3z"></path></svg>`;
   }
   
+  if (slug === 'qualidade') {
+    return `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sidebar-icon"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`;
+  }
+
   // Sleek geometric diamond shape fallback
   return `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sidebar-icon"><path d="M12 2L2 12l10 10 10-10L12 2z"></path></svg>`;
 }

@@ -91,6 +91,15 @@ export function renderSidebar() {
     `);
   }
 
+  if (hasModuleAccess('qualidade', 'can_view')) {
+    moduleItems.push(`
+      <div class="sidebar-item ${getCurrentRoute() === '/qualidade' ? 'active' : ''}" data-route="/qualidade">
+        <span class="icon">${getModuleIcon('qualidade')}</span>
+        <span>Qualidade</span>
+      </div>
+    `);
+  }
+
   if (moduleItems.length > 0) {
     menuItems += `
       <div class="sidebar-section-label">Módulos</div>
