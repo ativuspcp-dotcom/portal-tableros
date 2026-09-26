@@ -1,9 +1,10 @@
 import { renderSidebar, bindSidebarEvents } from '../components/sidebar.js';
 import { renderHeader } from '../components/header.js';
+import { montarRq03Laminacao } from './qualidade/rq03-laminacao.js';
 
 // Estrutura do módulo: Registros > Setor > RQ. Para incluir um setor ou RQ, basta editar aqui.
 const REGISTROS_SETORES = [
-  { slug: 'laminacao', label: 'Laminação', rqs: ['RQ01', 'RQ02'] },
+  { slug: 'laminacao', label: 'Laminação', rqs: ['RQ01', 'RQ02', 'RQ03'] },
   { slug: 'secagem', label: 'Secagem', rqs: ['RQ04', 'RQ16'] },
   { slug: 'colagem', label: 'Colagem', rqs: ['RQ05', 'RQ06', 'RQ07', 'RQ08'] },
   { slug: 'prensa', label: 'Prensa', rqs: ['RQ09'] },
@@ -82,6 +83,11 @@ export async function renderQualidade(container = document.getElementById('view-
 
   bindSidebarEvents();
   bindQualidadeEvents();
+
+  // Telas dos RQs já construídas; os demais seguem como placeholder
+  if (activeMainTab === 'registros' && setor.slug === 'laminacao' && rq === 'RQ03') {
+    montarRq03Laminacao(document.getElementById('qualidade-tab-content'));
+  }
 }
 
 function bindQualidadeEvents() {
