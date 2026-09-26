@@ -31,7 +31,7 @@ export function printFichaEntregaEPI(dados) {
       <head>
         <meta charset="utf-8">
         <title>Ficha de Entrega de EPI - ${funcionario.nome}</title>
-        <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
         <style>
           :root {
             --primary: #2b5c46;
@@ -40,7 +40,7 @@ export function printFichaEntregaEPI(dados) {
             --border: #dadce0;
           }
           body {
-            font-family: 'Roboto', sans-serif;
+            font-family: 'Poppins', sans-serif;
             padding: 20px;
             font-size: 11px;
             color: var(--text-main);
@@ -132,7 +132,7 @@ export function printFichaEntregaEPI(dados) {
 
           .print-btn-container { text-align: right; margin-bottom: 15px; }
           .btn-print {
-            padding: 8px 16px; background: var(--primary); color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500; font-family: 'Roboto'; font-size: 12px; display: inline-flex; align-items: center; gap: 6px;
+            padding: 8px 16px; background: var(--primary); color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500; font-family: 'Poppins'; font-size: 12px; display: inline-flex; align-items: center; gap: 6px;
             transition: opacity 0.2s;
           }
           .btn-print:hover { opacity: 0.9; }

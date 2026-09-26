@@ -487,12 +487,13 @@ function printEstoqueReport() {
       <head>
         <meta charset="UTF-8">
         <title>Relatório de Estoque - Comp. Acabado</title>
+        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
         <style>
           @media print {
             @page { size: A4; margin: 5mm; }
             body { -webkit-print-color-adjust: exact; print-color-adjust: exact; zoom: 0.85; padding: 0 !important; }
           }
-          body { font-family: 'Segoe UI', 'Inter', system-ui, sans-serif; color: #111827; margin: 0; padding: 15px; line-height: 1.3; }
+          body { font-family: 'Poppins', 'Segoe UI', system-ui, sans-serif; color: #111827; margin: 0; padding: 15px; line-height: 1.3; }
           
           .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #222; padding-bottom: 12px; margin-bottom: 20px; }
           .logo { max-height: 40px; }

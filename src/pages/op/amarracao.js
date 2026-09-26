@@ -1065,14 +1065,14 @@ function printAmarracaoOp(id) {
     <head>
       <meta charset="UTF-8">
       <title>OP - ${op.codigo_op}</title>
-      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+      <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
       <style>
         @media print {
           @page { size: A4 landscape; margin: 5mm; }
           body { -webkit-print-color-adjust: exact; print-color-adjust: exact; zoom: 0.76; }
           .no-print { display: none; }
         }
-        body { font-family: 'Inter', sans-serif; margin: 0; padding: 10px; color: #111; font-size: 11px; line-height: 1.3; }
+        body { font-family: 'Poppins', sans-serif; margin: 0; padding: 10px; color: #111; font-size: 11px; line-height: 1.3; }
         
         .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #222; padding-bottom: 8px; margin-bottom: 12px; }
         .logo { max-height: 35px; }

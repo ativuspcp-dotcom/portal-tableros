@@ -80,7 +80,7 @@ export async function printRomaneioReport(ocId) {
       <head>
         <meta charset="utf-8">
         <title>Romaneio - ${oc.codigo_oc || 'Sem Código'}</title>
-        <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
         <style>
           :root {
             --primary: #2b5c46; /* Tableros brand color */
@@ -89,7 +89,7 @@ export async function printRomaneioReport(ocId) {
             --border: #dadce0;
           }
           body { 
-            font-family: 'Roboto', sans-serif; 
+            font-family: 'Poppins', sans-serif; 
             padding: 20px; 
             font-size: 11px; 
             color: var(--text-main); 
@@ -154,8 +154,8 @@ export async function printRomaneioReport(ocId) {
           .item-meta { font-size: 9px; color: #5f6368; font-weight: 500; margin-top: 2px; }
           
           .pkg-row td { font-size: 10px; font-family: monospace; }
-          .pkg-row td.numeric { text-align: right; font-family: 'Roboto', sans-serif; font-size: 10px; }
-          .pkg-row td.center { text-align: center; font-family: 'Roboto', sans-serif; }
+          .pkg-row td.numeric { text-align: right; font-family: 'Poppins', sans-serif; font-size: 10px; }
+          .pkg-row td.center { text-align: center; font-family: 'Poppins', sans-serif; }
 
           .total-row td {
             font-size: 11px;
@@ -175,7 +175,7 @@ export async function printRomaneioReport(ocId) {
           
           .print-btn-container { text-align: right; margin-bottom: 15px; }
           .btn-print {
-            padding: 8px 16px; background: var(--primary); color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500; font-family: 'Roboto'; font-size: 12px; display: inline-flex; align-items: center; gap: 6px;
+            padding: 8px 16px; background: var(--primary); color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500; font-family: 'Poppins'; font-size: 12px; display: inline-flex; align-items: center; gap: 6px;
             transition: opacity 0.2s;
           }
           .btn-print:hover { opacity: 0.9; }
