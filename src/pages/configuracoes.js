@@ -7,14 +7,45 @@ import { showToast } from '../components/toast.js';
 // Estrutura pensada para crescer: um menu principal por módulo (hoje só PCP) e sub-menus dentro
 // dele (hoje só Secagem). Adicionar um novo módulo/tela de configuração é só um novo item aqui.
 const MAIN_TABS = [
-  { slug: 'pcp', label: 'PCP' }
+  { slug: 'pcp', label: 'PCP' },
+  { slug: 'qualidade', label: 'Qualidade' }
 ];
 const PCP_SUB_TABS = [
   { slug: 'secagem', label: 'Secagem' },
   { slug: 'serra', label: 'Serra' }
 ];
+// Um sub-menu por RQ que tiver parâmetro editável (hoje só o RQ03; os demais ainda não têm).
+const QUALIDADE_SUB_TABS = [
+  { slug: 'rq03-laminacao', label: "RQ03 · Laminação" }
+];
 
 const isTelaSetor = () => activeMainTab === 'pcp' && (activePcpSubTab === 'secagem' || activePcpSubTab === 'serra');
+const isTelaLimitesRq03 = () => activeMainTab === 'qualidade' && activeQualidadeSubTab === 'rq03-laminacao';
+
+/** Sub-abas do menu principal ativo (vazio = módulo sem sub-abas). */
+function subTabsAtivas() {
+  if (activeMainTab === 'pcp') return PCP_SUB_TABS;
+  if (activeMainTab === 'qualidade') return QUALIDADE_SUB_TABS;
+  return [];
+}
+function subTabAtiva() {
+  if (activeMainTab === 'pcp') return activePcpSubTab;
+  if (activeMainTab === 'qualidade') return activeQualidadeSubTab;
+  return null;
+}
+function setSubTabAtiva(sub) {
+  if (activeMainTab === 'pcp') { activePcpSubTab = sub; sessionStorage.setItem('configActivePcpSubTab', sub); }
+  else if (activeMainTab === 'qualidade') { activeQualidadeSubTab = sub; sessionStorage.setItem('configActiveQualidadeSubTab', sub); }
+}
+
+// Medida | unidade | casas decimais | campo em qualidade_rq03_limites | explicação da regra.
+const CONFIG_TIPOS_RQ03 = [
+  { tipo: 'comprimento', nome: 'Comprimento', unidade: 'm', casas: 2, campo: 'tolerancia', regra: 'Diferença até a tolerância = ALERTA; maior que a tolerância = PROBLEMA.' },
+  { tipo: 'largura', nome: 'Largura', unidade: 'm', casas: 2, campo: 'tolerancia', regra: 'Diferença até a tolerância = ALERTA; maior que a tolerância = PROBLEMA.' },
+  { tipo: 'espessura', nome: 'Espessura', unidade: 'mm', casas: 2, campo: 'tolerancia', regra: 'Diferença até a tolerância = ALERTA; maior que a tolerância = PROBLEMA.' },
+  { tipo: 'esquadro', nome: 'Esquadro', unidade: 'cm', casas: 2, campo: 'limite', regra: 'Até o limite = ALERTA; acima do limite = PROBLEMA.' },
+  { tipo: 'temperatura', nome: 'Temperatura', unidade: '°C', casas: 1, campo: 'limite', regra: 'No limite = ALERTA; abaixo do limite = PROBLEMA.' }
+];
 
 const LOCAIS_ESTOQUE = ['CONSUMIR', 'RESSECAR', 'SERRAR'];
 const LOCAIS_ESTOQUE_SERRA = ['CONSUMIR', 'MERCADO INTERNO'];
@@ -32,6 +63,7 @@ const posicaoOpcao = (opcao) => {
 
 let activeMainTab = sessionStorage.getItem('configActiveMainTab') || 'pcp';
 let activePcpSubTab = sessionStorage.getItem('configActivePcpSubTab') || 'secagem';
+let activeQualidadeSubTab = sessionStorage.getItem('configActiveQualidadeSubTab') || 'rq03-laminacao';
 
 let regrasCubagem = [];
 let medidasSetup = [];
@@ -41,6 +73,10 @@ let selectedSecador = null;
 let selectedComboKey = null;
 let editingId = null;
 let regrasCarregadas = false;
+
+let limitesRq03 = [];
+let limitesCarregados = false;
+let editingLimiteTipo = null;
 
 const fmtDim = (v) => Number(v).toFixed(3).replace('.', ',');
 const fmtInput = (v) => (v === null || v === undefined ? '' : String(v).replace('.', ','));
@@ -74,11 +110,11 @@ export async function renderConfiguracoes(container = document.getElementById('v
             `).join('')}
           </div>
 
-          ${activeMainTab === 'pcp' ? `
+          ${subTabsAtivas().length > 0 ? `
             <div class="pcp-sub-tabs" style="display: flex; gap: var(--space-4); margin-bottom: var(--space-4); border-bottom: 1px solid var(--color-border-light); padding-bottom: var(--space-2); padding-left: var(--space-2);">
-              ${PCP_SUB_TABS.map(t => `
-                <button class="config-sub-tab-btn ${activePcpSubTab === t.slug ? 'active' : ''}" data-subtab="${t.slug}"
-                  style="font-size: var(--font-size-sm); font-weight: ${activePcpSubTab === t.slug ? '600' : '400'}; color: ${activePcpSubTab === t.slug ? 'var(--color-primary)' : 'var(--color-text-secondary)'}; border: none; background: transparent; border-bottom: 2px solid ${activePcpSubTab === t.slug ? 'var(--color-primary)' : 'transparent'}; padding-bottom: 4px; transition: all var(--transition-fast);">
+              ${subTabsAtivas().map(t => `
+                <button class="config-sub-tab-btn ${subTabAtiva() === t.slug ? 'active' : ''}" data-subtab="${t.slug}"
+                  style="font-size: var(--font-size-sm); font-weight: ${subTabAtiva() === t.slug ? '600' : '400'}; color: ${subTabAtiva() === t.slug ? 'var(--color-primary)' : 'var(--color-text-secondary)'}; border: none; background: transparent; border-bottom: 2px solid ${subTabAtiva() === t.slug ? 'var(--color-primary)' : 'transparent'}; padding-bottom: 4px; transition: all var(--transition-fast);">
                   ${t.label}
                 </button>
               `).join('')}
@@ -105,12 +141,15 @@ export async function renderConfiguracoes(container = document.getElementById('v
     await fetchRegrasCubagem();
     refreshView();
   }
+  if (isTelaLimitesRq03()) {
+    await fetchLimitesRq03();
+    refreshView();
+  }
 }
 
 function renderActiveTabView() {
-  if (isTelaSetor()) {
-    return renderSecagemConfig();
-  }
+  if (isTelaSetor()) return renderSecagemConfig();
+  if (isTelaLimitesRq03()) return renderLimitesRq03Config();
   return '';
 }
 
@@ -119,6 +158,7 @@ function refreshView() {
   if (!content) return;
   content.innerHTML = renderActiveTabView();
   if (isTelaSetor()) bindSecagemConfigEvents();
+  if (isTelaLimitesRq03()) bindLimitesRq03Events();
 }
 
 function bindTabEvents() {
@@ -135,9 +175,8 @@ function bindTabEvents() {
   document.querySelectorAll('.config-sub-tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const sub = btn.dataset.subtab;
-      if (sub === activePcpSubTab) return;
-      activePcpSubTab = sub;
-      sessionStorage.setItem('configActivePcpSubTab', activePcpSubTab);
+      if (sub === subTabAtiva()) return;
+      setSubTabAtiva(sub);
       renderConfiguracoes();
     });
   });
@@ -713,5 +752,144 @@ async function deleteRegra(id, opcao) {
   } catch (error) {
     console.error('Error deleting regra de cubagem:', error);
     showToast('Erro ao excluir a regra. Tente novamente.', 'error');
+  }
+}
+
+// ========== Qualidade > RQ03 · Laminação: limites de alerta/problema ==========
+// Tabela qualidade_rq03_limites (1 linha por tipo: comprimento/largura/espessura guardam "tolerancia";
+// esquadro/temperatura guardam "limite" fixo). Editável só por admin (RLS); ver migration
+// 20260927_rq03_limites_configuraveis.sql.
+
+async function fetchLimitesRq03() {
+  try {
+    const { data, error } = await supabase.from('qualidade_rq03_limites').select('tipo, tolerancia, limite');
+    if (error) throw error;
+    limitesRq03 = data || [];
+    limitesCarregados = true;
+  } catch (error) {
+    console.error('Error fetching limites do RQ03:', error);
+    showToast('Erro ao carregar os limites do RQ03', 'error');
+  }
+}
+
+const fmtCasas = (v, casas) => (v === null || v === undefined ? '-' : Number(v).toFixed(casas).replace('.', ','));
+
+function linhaLimiteRq03(cfg) {
+  const registro = limitesRq03.find(l => l.tipo === cfg.tipo);
+  const valorAtual = registro ? registro[cfg.campo] : null;
+  const prefixo = cfg.campo === 'tolerancia' ? '± ' : '';
+
+  if (editingLimiteTipo === cfg.tipo) {
+    return `
+      <tr style="background: var(--color-primary-light);">
+        <td style="${CELL} font-weight: 600; color: var(--color-text);">${cfg.nome}</td>
+        <td style="${CELL} font-size: var(--font-size-sm); color: var(--color-text-secondary);">${cfg.regra}</td>
+        <td style="${CELL}">
+          <input type="text" id="limite-valor" class="form-input" inputmode="decimal" value="${esc(fmtInput(valorAtual))}" style="${INPUT_STYLE} width: 90px;" /> ${cfg.unidade}
+        </td>
+        <td style="${CELL} text-align: right; white-space: nowrap;">
+          <button class="btn btn-ghost btn-icon cfg-limite-save" data-tipo="${cfg.tipo}" data-campo="${cfg.campo}" title="Salvar" style="width: 26px; height: 26px;">${ICON_CHECK}</button>
+          <button class="btn btn-ghost btn-icon cfg-limite-cancel" title="Cancelar" style="width: 26px; height: 26px;">${ICON_CLOSE}</button>
+        </td>
+      </tr>`;
+  }
+
+  return `
+    <tr>
+      <td style="${CELL} font-weight: 600; color: var(--color-text);">${cfg.nome}</td>
+      <td style="${CELL} font-size: var(--font-size-sm); color: var(--color-text-secondary);">${cfg.regra}</td>
+      <td style="${CELL} font-weight: 700; color: var(--color-text);">${prefixo}${fmtCasas(valorAtual, cfg.casas)} ${cfg.unidade}</td>
+      <td style="${CELL} text-align: right;">
+        <button class="btn btn-ghost btn-icon cfg-limite-edit" data-tipo="${cfg.tipo}" title="Editar" style="width: 26px; height: 26px;">${ICON_EDIT}</button>
+      </td>
+    </tr>`;
+}
+
+function renderLimitesRq03Config() {
+  if (!limitesCarregados) {
+    return `<div style="padding: var(--space-8); text-align: center; color: var(--color-text-secondary);">Carregando limites...</div>`;
+  }
+
+  return `
+    <div style="max-width: 900px; margin: 0 auto; width: 100%;">
+      <div style="margin-bottom: var(--space-3);">
+        <h3 style="font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); color: var(--color-text); margin: 0;">Limites de alerta/problema</h3>
+        <p style="font-size: var(--font-size-sm); color: var(--color-text-secondary); margin: 4px 0 0;">
+          Usados para classificar cada medida do RQ03 como OK, ALERTA ou PROBLEMA (Comprimento/Largura/Espessura comparam com o padrão digitado pelo apontador; Esquadro/Temperatura usam um limite fixo, sem padrão).
+          O apontador nunca vê esse resultado na tela — só aparece aqui e no detalhe do registro no portal.
+          As alterações valem na hora para o app-operacional e não recalculam apontamentos já feitos.
+        </p>
+      </div>
+      <div class="card" style="padding: 0; overflow: hidden; border-color: var(--color-border); background: var(--color-surface);">
+        <div class="table-container">
+          <table class="table">
+            <thead>
+              <tr>
+                <th style="font-size: var(--font-size-xs); padding: 6px 8px;">Medida</th>
+                <th style="font-size: var(--font-size-xs); padding: 6px 8px;">Regra</th>
+                <th style="font-size: var(--font-size-xs); padding: 6px 8px;">Valor</th>
+                <th style="width: 60px; padding: 6px 8px;"></th>
+              </tr>
+            </thead>
+            <tbody>${CONFIG_TIPOS_RQ03.map(linhaLimiteRq03).join('')}</tbody>
+          </table>
+        </div>
+      </div>
+      <p style="font-size: var(--font-size-xs); color: var(--color-text-secondary); margin: var(--space-3) 0 0;">
+        O <strong>veredito geral</strong> do apontamento (APROVADO/REPROVADO) é uma regra separada, não editável aqui: reprova quando 2 ou mais das 4 lâminas (ou dos 4 roletes, na Temperatura) tiverem PROBLEMA na mesma medida.
+      </p>
+    </div>`;
+}
+
+function bindLimitesRq03Events() {
+  document.querySelectorAll('.cfg-limite-edit').forEach(btn => {
+    btn.addEventListener('click', () => {
+      editingLimiteTipo = btn.dataset.tipo;
+      refreshView();
+      document.getElementById('limite-valor')?.focus();
+    });
+  });
+
+  document.querySelectorAll('.cfg-limite-cancel').forEach(btn => {
+    btn.addEventListener('click', () => { editingLimiteTipo = null; refreshView(); });
+  });
+
+  document.querySelectorAll('.cfg-limite-save').forEach(btn => {
+    btn.addEventListener('click', () => saveLimiteRq03(btn.dataset.tipo, btn.dataset.campo));
+  });
+
+  document.getElementById('limite-valor')?.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' || !editingLimiteTipo) return;
+    const cfg = CONFIG_TIPOS_RQ03.find(c => c.tipo === editingLimiteTipo);
+    saveLimiteRq03(editingLimiteTipo, cfg.campo);
+  });
+}
+
+async function saveLimiteRq03(tipo, campo) {
+  const valor = parseDecimal(document.getElementById('limite-valor').value);
+  if (valor === null || Number.isNaN(valor) || valor < 0 || valor >= 1000) {
+    showToast('Informe um valor válido (maior ou igual a zero).', 'warning');
+    return;
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('qualidade_rq03_limites')
+      .update({ [campo]: valor })
+      .eq('tipo', tipo)
+      .select();
+    if (error) throw error;
+    if (!data || data.length === 0) {
+      showToast('Sem permissão para alterar os limites (somente administradores).', 'error');
+      return;
+    }
+
+    showToast('Limite atualizado.', 'success');
+    editingLimiteTipo = null;
+    await fetchLimitesRq03();
+    refreshView();
+  } catch (error) {
+    console.error('Error updating limite do RQ03:', error);
+    showToast('Erro ao salvar. Tente novamente.', 'error');
   }
 }

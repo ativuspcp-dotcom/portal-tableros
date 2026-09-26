@@ -16,9 +16,12 @@ const hoje = () => new Date().toISOString().split('T')[0];
 const estado = { inicio: hoje(), fim: hoje(), status: '', linhaFiltro: '', pagina: 0, temMais: true, buscando: false, linhas: [] };
 let opcoesLinha = [];
 
-const STATUS_BADGE = { OK: 'badge-green', ALERTA: 'badge-yellow', PROBLEMA: 'badge-red' };
+// STATUS_BADGE/badge() = veredito GERAL do apontamento (APROVADO/REPROVADO). COR_STATUS = cor de cada
+// MEDIDA individual (OK/ALERTA/PROBLEMA, dentro do detalhe) — são conceitos diferentes, não confundir.
+const STATUS_BADGE = { APROVADO: 'badge-green', REPROVADO: 'badge-red' };
 const badge = (s) => `<span class="badge ${STATUS_BADGE[s] || 'badge-gray'}">${s}</span>`;
 const COR_STATUS = { OK: '#16a34a', ALERTA: '#d97706', PROBLEMA: '#dc2626' };
+const NOME_TIPO = { comprimento: 'Comprimento', largura: 'Largura', espessura: 'Espessura', esquadro: 'Esquadro', temperatura: 'Temperatura' };
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fmtNum = (v, casas = 2) => (v === null || v === undefined ? '-' : Number(v).toFixed(casas).replace('.', ','));
@@ -108,7 +111,7 @@ function htmlLista() {
         <div style="display: flex; flex-direction: column; gap: 4px;">
           <label style="font-size: var(--font-size-xs); font-weight: 500; color: var(--color-text-secondary);">Status</label>
           <select id="rq03-status" class="form-input" style="height: 34px; width: 140px; font-size: var(--font-size-sm);">
-            ${['', 'OK', 'ALERTA', 'PROBLEMA'].map(s => `<option value="${s}" ${estado.status === s ? 'selected' : ''}>${s || 'Todos'}</option>`).join('')}
+            ${['', 'APROVADO', 'REPROVADO'].map(s => `<option value="${s}" ${estado.status === s ? 'selected' : ''}>${s || 'Todos'}</option>`).join('')}
           </select>
         </div>
       </div>
@@ -196,7 +199,7 @@ function htmlTipo(tipo, dados, urls) {
 async function abrirDetalhe(id) {
   const { data: r, error } = await supabase
     .from('qualidade_laminacao_rq03')
-    .select('id, created_at, linha, responsavel_nome, status, qtd_ok, qtd_alerta, qtd_problema, comprimento, largura, espessura, esquadro, temperatura_roletes')
+    .select('id, created_at, linha, responsavel_nome, status, qtd_ok, qtd_alerta, qtd_problema, resumo, comprimento, largura, espessura, esquadro, temperatura_roletes')
     .eq('id', id)
     .single();
   if (error || !r) {
@@ -211,6 +214,7 @@ async function abrirDetalhe(id) {
   if (erroUrls) showToast('Não foi possível carregar as fotos', 'error');
   (assinadas || []).forEach(a => { if (a.signedUrl) urls[a.path] = a.signedUrl; });
 
+  const categoriasReprovadas = r.resumo?.categorias_reprovadas || [];
   const corpo = `
     <div style="display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: center; margin-bottom: var(--space-4);">
       ${badge(r.status)}
@@ -221,6 +225,7 @@ async function abrirDetalhe(id) {
       <span style="color: ${COR_STATUS.ALERTA};">${r.qtd_alerta} alerta</span>
       <span style="color: ${COR_STATUS.PROBLEMA};">${r.qtd_problema} problema</span>
     </div>
+    ${categoriasReprovadas.length > 0 ? `<div class="error-text" style="margin-bottom: var(--space-4); font-size: var(--font-size-sm);">Reprovado por: ${categoriasReprovadas.map(t => NOME_TIPO[t] || t).join(', ')} (2 ou mais itens com problema nessa categoria)</div>` : ''}
     ${TIPOS.map(t => htmlTipo(t, r[t.coluna], urls)).join('')}`;
 
   openModal('RQ03 · Registro de Qualidade – Laminação', corpo, '', { maxWidth: '960px' });
