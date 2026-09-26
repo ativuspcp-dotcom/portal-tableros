@@ -1,4 +1,4 @@
-import { supabase } from '../../config/supabase.js';
+import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '../../config/supabase.js';
 import { showToast } from '../../components/toast.js';
 import { openModal } from '../../components/modal.js';
 import { getBPLID } from '../../auth/auth.js';
@@ -179,7 +179,8 @@ function htmlTipo(tipo, dados, urls) {
   const celula = (m) => {
     const foto = urls[m.foto]
       ? `<a href="${urls[m.foto]}" target="_blank" rel="noopener"><img src="${urls[m.foto]}" loading="lazy" alt="Foto" style="width: 72px; height: 54px; object-fit: cover; border-radius: 4px; vertical-align: middle; margin-left: 8px;"></a>`
-      : '';
+      // Sem link = a foto já não está no Storage (removida pelo prazo de 60 dias) ou não carregou; valores/status seguem no banco
+      : `<span title="Foto indisponível: removida pelo prazo de retenção (60 dias) ou não carregou" style="display: inline-block; width: 72px; height: 54px; line-height: 1.2; font-size: 9px; color: var(--color-text-secondary); background: var(--color-surface-alt); border: 1px dashed var(--color-border); border-radius: 4px; vertical-align: middle; margin-left: 8px; text-align: center; padding-top: 10px; box-sizing: border-box; white-space: normal;">Foto<br>indisponível</span>`;
     const desvio = m.desvio > 0 ? `+${fmtNum(m.desvio)}` : fmtNum(m.desvio);
     return `<td style="padding: 4px 8px; white-space: nowrap;">
       <span style="font-weight: 700; color: ${COR_STATUS[m.status]};">${fmtNum(m.valor, casas)}</span>
@@ -229,5 +230,40 @@ async function abrirDetalhe(id) {
     ${categoriasReprovadas.length > 0 ? `<div class="error-text" style="margin-bottom: var(--space-4); font-size: var(--font-size-sm);">Reprovado por: ${categoriasReprovadas.map(t => NOME_TIPO[t] || t).join(', ')} (2 ou mais itens com problema nessa categoria)</div>` : ''}
     ${TIPOS.map(t => htmlTipo(t, r[t.coluna], urls)).join('')}`;
 
-  openModal('RQ03 · Registro de Qualidade – Laminação', corpo, '', { maxWidth: '960px' });
+  const rodape = `<button class="btn btn-primary btn-sm" id="rq03-baixar-pdf">Gerar PDF</button>`;
+  openModal('RQ03 · Registro de Qualidade – Laminação', corpo, rodape, { maxWidth: '960px' });
+  document.getElementById('rq03-baixar-pdf').addEventListener('click', (e) => gerarPdf(r.id, e.currentTarget));
+}
+
+// PDF do apontamento (1 página de resumo + fotos das medidas com PROBLEMA), gerado no servidor pela edge
+// function rq03-relatorio-pdf com o login de quem clicou (a RLS decide se pode ver o registro e as fotos).
+async function gerarPdf(id, btn) {
+  const textoOriginal = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Gerando PDF...';
+  // Aba aberta já no clique (antes de esperar o servidor) para o bloqueador de pop-ups não barrar
+  const aba = window.open('', '_blank');
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/rq03-relatorio-pdf`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${session?.access_token || ''}` },
+      body: JSON.stringify({ id })
+    });
+    if (!res.ok) {
+      const erro = await res.json().catch(() => ({}));
+      throw new Error(erro.error || `Erro ${res.status}`);
+    }
+    const url = URL.createObjectURL(await res.blob());
+    if (aba) aba.location.href = url;
+    else window.open(url, '_blank');
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  } catch (err) {
+    aba?.close();
+    console.error('Erro ao gerar o PDF do RQ03:', err);
+    showToast(`Não foi possível gerar o PDF: ${err.message}`, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = textoOriginal;
+  }
 }

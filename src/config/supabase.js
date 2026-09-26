@@ -12,4 +12,4 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   }
 });
 
-export { SUPABASE_URL };
+export { SUPABASE_URL, SUPABASE_ANON_KEY };
