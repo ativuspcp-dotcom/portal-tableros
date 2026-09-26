@@ -14,28 +14,21 @@ const PCP_SUB_TABS = [
   { slug: 'secagem', label: 'Secagem' },
   { slug: 'serra', label: 'Serra' }
 ];
-// Um sub-menu por RQ que tiver parâmetro editável (hoje só o RQ03; os demais ainda não têm).
-const QUALIDADE_SUB_TABS = [
-  { slug: 'rq03-laminacao', label: "RQ03 · Laminação" }
+// Qualidade > Setor > RQ (mesma estrutura de Registros em pages/qualidade.js). Um RQ só aparece aqui se
+// tiver parâmetro editável (hoje só o RQ03); setor/RQ novo = uma entrada, com sua própria função de render.
+const QUALIDADE_SETORES = [
+  { slug: 'laminacao', label: 'Laminação', rqs: [{ slug: 'rq03', label: 'RQ03' }] }
 ];
 
 const isTelaSetor = () => activeMainTab === 'pcp' && (activePcpSubTab === 'secagem' || activePcpSubTab === 'serra');
-const isTelaLimitesRq03 = () => activeMainTab === 'qualidade' && activeQualidadeSubTab === 'rq03-laminacao';
+const isTelaLimitesRq03 = () => activeMainTab === 'qualidade' && rqQualidadeAtual()?.slug === 'rq03';
 
-/** Sub-abas do menu principal ativo (vazio = módulo sem sub-abas). */
-function subTabsAtivas() {
-  if (activeMainTab === 'pcp') return PCP_SUB_TABS;
-  if (activeMainTab === 'qualidade') return QUALIDADE_SUB_TABS;
-  return [];
+function setorQualidadeAtual() {
+  return QUALIDADE_SETORES.find(s => s.slug === activeQualidadeSetor) || QUALIDADE_SETORES[0];
 }
-function subTabAtiva() {
-  if (activeMainTab === 'pcp') return activePcpSubTab;
-  if (activeMainTab === 'qualidade') return activeQualidadeSubTab;
-  return null;
-}
-function setSubTabAtiva(sub) {
-  if (activeMainTab === 'pcp') { activePcpSubTab = sub; sessionStorage.setItem('configActivePcpSubTab', sub); }
-  else if (activeMainTab === 'qualidade') { activeQualidadeSubTab = sub; sessionStorage.setItem('configActiveQualidadeSubTab', sub); }
+function rqQualidadeAtual() {
+  const setor = setorQualidadeAtual();
+  return setor.rqs.find(r => r.slug === activeQualidadeRq) || setor.rqs[0];
 }
 
 // Medida | unidade | casas decimais | campo em qualidade_rq03_limites | explicação da regra.
@@ -63,7 +56,8 @@ const posicaoOpcao = (opcao) => {
 
 let activeMainTab = sessionStorage.getItem('configActiveMainTab') || 'pcp';
 let activePcpSubTab = sessionStorage.getItem('configActivePcpSubTab') || 'secagem';
-let activeQualidadeSubTab = sessionStorage.getItem('configActiveQualidadeSubTab') || 'rq03-laminacao';
+let activeQualidadeSetor = sessionStorage.getItem('configActiveQualidadeSetor') || 'laminacao';
+let activeQualidadeRq = sessionStorage.getItem('configActiveQualidadeRq') || 'rq03';
 
 let regrasCubagem = [];
 let medidasSetup = [];
@@ -110,12 +104,31 @@ export async function renderConfiguracoes(container = document.getElementById('v
             `).join('')}
           </div>
 
-          ${subTabsAtivas().length > 0 ? `
+          ${activeMainTab === 'pcp' ? `
             <div class="pcp-sub-tabs" style="display: flex; gap: var(--space-4); margin-bottom: var(--space-4); border-bottom: 1px solid var(--color-border-light); padding-bottom: var(--space-2); padding-left: var(--space-2);">
-              ${subTabsAtivas().map(t => `
-                <button class="config-sub-tab-btn ${subTabAtiva() === t.slug ? 'active' : ''}" data-subtab="${t.slug}"
-                  style="font-size: var(--font-size-sm); font-weight: ${subTabAtiva() === t.slug ? '600' : '400'}; color: ${subTabAtiva() === t.slug ? 'var(--color-primary)' : 'var(--color-text-secondary)'}; border: none; background: transparent; border-bottom: 2px solid ${subTabAtiva() === t.slug ? 'var(--color-primary)' : 'transparent'}; padding-bottom: 4px; transition: all var(--transition-fast);">
+              ${PCP_SUB_TABS.map(t => `
+                <button class="config-sub-tab-btn ${activePcpSubTab === t.slug ? 'active' : ''}" data-subtab="${t.slug}"
+                  style="font-size: var(--font-size-sm); font-weight: ${activePcpSubTab === t.slug ? '600' : '400'}; color: ${activePcpSubTab === t.slug ? 'var(--color-primary)' : 'var(--color-text-secondary)'}; border: none; background: transparent; border-bottom: 2px solid ${activePcpSubTab === t.slug ? 'var(--color-primary)' : 'transparent'}; padding-bottom: 4px; transition: all var(--transition-fast);">
                   ${t.label}
+                </button>
+              `).join('')}
+            </div>
+          ` : ''}
+
+          ${activeMainTab === 'qualidade' ? `
+            <div class="pcp-sub-tabs" style="display: flex; gap: var(--space-4); margin-bottom: var(--space-2); border-bottom: 1px solid var(--color-border-light); padding-bottom: var(--space-2); padding-left: var(--space-2);">
+              ${QUALIDADE_SETORES.map(s => `
+                <button class="config-setor-tab-btn ${activeQualidadeSetor === s.slug ? 'active' : ''}" data-setor="${s.slug}"
+                  style="font-size: var(--font-size-sm); font-weight: ${activeQualidadeSetor === s.slug ? '600' : '400'}; color: ${activeQualidadeSetor === s.slug ? 'var(--color-primary)' : 'var(--color-text-secondary)'}; border: none; background: transparent; border-bottom: 2px solid ${activeQualidadeSetor === s.slug ? 'var(--color-primary)' : 'transparent'}; padding-bottom: 4px; transition: all var(--transition-fast);">
+                  ${s.label}
+                </button>
+              `).join('')}
+            </div>
+            <div class="pcp-sub-tabs" style="display: flex; gap: var(--space-4); margin-bottom: var(--space-4); padding-left: var(--space-6);">
+              ${setorQualidadeAtual().rqs.map(r => `
+                <button class="config-rq-tab-btn ${activeQualidadeRq === r.slug ? 'active' : ''}" data-rq="${r.slug}"
+                  style="font-size: var(--font-size-xs); font-weight: ${activeQualidadeRq === r.slug ? '600' : '400'}; color: ${activeQualidadeRq === r.slug ? 'var(--color-primary)' : 'var(--color-text-secondary)'}; border: none; background: transparent; border-bottom: 2px solid ${activeQualidadeRq === r.slug ? 'var(--color-primary)' : 'transparent'}; padding-bottom: 4px; transition: all var(--transition-fast);">
+                  ${r.label}
                 </button>
               `).join('')}
             </div>
@@ -175,8 +188,31 @@ function bindTabEvents() {
   document.querySelectorAll('.config-sub-tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const sub = btn.dataset.subtab;
-      if (sub === subTabAtiva()) return;
-      setSubTabAtiva(sub);
+      if (sub === activePcpSubTab) return;
+      activePcpSubTab = sub;
+      sessionStorage.setItem('configActivePcpSubTab', activePcpSubTab);
+      renderConfiguracoes();
+    });
+  });
+
+  document.querySelectorAll('.config-setor-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const setor = btn.dataset.setor;
+      if (setor === activeQualidadeSetor) return;
+      activeQualidadeSetor = setor;
+      activeQualidadeRq = setorQualidadeAtual().rqs[0]?.slug;
+      sessionStorage.setItem('configActiveQualidadeSetor', activeQualidadeSetor);
+      sessionStorage.setItem('configActiveQualidadeRq', activeQualidadeRq);
+      renderConfiguracoes();
+    });
+  });
+
+  document.querySelectorAll('.config-rq-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const rq = btn.dataset.rq;
+      if (rq === activeQualidadeRq) return;
+      activeQualidadeRq = rq;
+      sessionStorage.setItem('configActiveQualidadeRq', activeQualidadeRq);
       renderConfiguracoes();
     });
   });

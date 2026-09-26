@@ -91,6 +91,7 @@ function htmlLista() {
 
   const th = (t, extra = '') => `<th style="font-size: var(--font-size-xs); padding: 4px 8px; ${extra}">${t}</th>`;
   return `
+    <h2 style="font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); color: var(--color-text); margin: 0 0 var(--space-4);">REGISTRO DE QUALIDADE - LAMINAÇÃO</h2>
     <div class="toolbar" style="margin-bottom: var(--space-4); display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: flex-end; justify-content: space-between;">
       <div style="display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: flex-end;">
         <div style="display: flex; flex-direction: column; gap: 4px;">
