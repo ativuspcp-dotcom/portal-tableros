@@ -1,19 +1,30 @@
 // Geração do PDF do RQ03 (sem HTTP/auth aqui — ver index.ts). Separado num módulo próprio para poder ser
 // testado localmente com `deno run` sem precisar subir o servidor da função (Deno.serve fica só no index.ts).
 import { PDFDocument, StandardFonts, rgb } from "https://esm.sh/pdf-lib@1.17.1";
+import * as fontkitModulo from "https://esm.sh/@pdf-lib/fontkit@1.1.1";
+
+// O pacote é CommonJS: conforme o carregador o objeto vem em .default ou direto no módulo.
+const fontkit = (fontkitModulo as any).default ?? fontkitModulo;
 
 // A função roda nos servidores do Supabase, não dentro do portal: o caminho relativo /assets/... que a OP usa
 // no navegador não existe aqui, então a logo vem pela URL pública completa do portal (arquivo em public/assets).
 const LOGO_URL = 'https://portal-tableros.vercel.app/assets/logo-full.png';
 
-async function baixarLogo(): Promise<Uint8Array | null> {
+// Poppins (a fonte do portal e dos demais relatórios). As fontes padrão de PDF não a incluem, então o arquivo
+// TTF é baixado e embutido (só os caracteres usados entram no PDF). Se o download falhar cai na Helvetica.
+const FONT_URLS = {
+  regular: 'https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/poppins/Poppins-Regular.ttf',
+  bold: 'https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/poppins/Poppins-SemiBold.ttf',
+};
+
+async function baixarBytes(url: string, o_que: string): Promise<Uint8Array | null> {
   try {
-    const res = await fetch(LOGO_URL);
+    const res = await fetch(url);
     if (!res.ok) return null;
     return new Uint8Array(await res.arrayBuffer());
   } catch (err) {
-    console.error('Falha ao baixar a logo do portal:', err);
-    return null; // sem logo o PDF sai igual, só sem a imagem (não vale derrubar um alerta por isso)
+    console.error(`Falha ao baixar ${o_que}:`, err);
+    return null; // logo/fonte são só acabamento: sem elas o PDF sai igual (não vale derrubar um alerta por isso)
   }
 }
 
@@ -66,9 +77,22 @@ export async function gerarPdf(rq: Record<string, any>, fotos: Foto[]): Promise<
   pdfDoc.setTitle(`RQ03 - ${rq.linha} - ${fmtDataHora(rq.created_at)}`);
   pdfDoc.setProducer('Sistema PCP Tableros');
 
-  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-  const logoBytes = await baixarLogo();
+  pdfDoc.registerFontkit(fontkit);
+  const [regularBytes, boldBytes, logoBytes] = [
+    await baixarBytes(FONT_URLS.regular, 'a fonte Poppins Regular'),
+    await baixarBytes(FONT_URLS.bold, 'a fonte Poppins SemiBold'),
+    await baixarBytes(LOGO_URL, 'a logo do portal'),
+  ];
+  let font, fontBold;
+  try {
+    if (!regularBytes || !boldBytes) throw new Error('fonte não baixada');
+    font = await pdfDoc.embedFont(regularBytes, { subset: true });
+    fontBold = await pdfDoc.embedFont(boldBytes, { subset: true });
+  } catch (err) {
+    console.error('Usando Helvetica no lugar da Poppins:', err);
+    font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  }
   const logoImage = logoBytes ? await pdfDoc.embedPng(logoBytes) : null;
 
   const drawRect = (page: any, x: number, y: number, w: number, h: number, color: any) =>
