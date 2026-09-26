@@ -173,29 +173,68 @@ export async function montarRq03Laminacao(el) {
 
 // ---------- detalhe ----------
 
-function htmlTipo(tipo, dados, urls) {
-  if (!dados) return '';
-  const casas = tipo.casas ?? 2;
-  const celula = (m) => {
-    const foto = urls[m.foto]
-      ? `<a href="${urls[m.foto]}" target="_blank" rel="noopener"><img src="${urls[m.foto]}" loading="lazy" alt="Foto" style="width: 72px; height: 54px; object-fit: cover; border-radius: 4px; vertical-align: middle; margin-left: 8px;"></a>`
-      // Sem link = a foto já não está no Storage (removida pelo prazo de 60 dias) ou não carregou; valores/status seguem no banco
-      : `<span title="Foto indisponível: removida pelo prazo de retenção (60 dias) ou não carregou" style="display: inline-block; width: 72px; height: 54px; line-height: 1.2; font-size: 9px; color: var(--color-text-secondary); background: var(--color-surface-alt); border: 1px dashed var(--color-border); border-radius: 4px; vertical-align: middle; margin-left: 8px; text-align: center; padding-top: 10px; box-sizing: border-box; white-space: normal;">Foto<br>indisponível</span>`;
-    const desvio = m.desvio > 0 ? `+${fmtNum(m.desvio)}` : fmtNum(m.desvio);
-    return `<td style="padding: 4px 8px; white-space: nowrap;">
-      <span style="font-weight: 700; color: ${COR_STATUS[m.status]};">${fmtNum(m.valor, casas)}</span>
-      <span style="font-size: 10px; color: var(--color-text-secondary);"> (${desvio}) ${m.status}</span>${foto}
-    </td>`;
+// Cor de cada status (mesma do PDF): borda forte + fundo claro. ALERTA em laranja.
+const BG_STATUS = { OK: '#ecfaf1', ALERTA: '#fff6ea', PROBLEMA: '#fdf2f2' };
+const corStatus = (s) => COR_STATUS[s] || '#9ca3af';
+
+const fmtDesvio = (d) => (d > 0 ? `+${fmtNum(d)}` : fmtNum(d));
+
+// Aba "Resultados": um cartão por medida, cada ponto numa caixa com borda e fundo da cor do status (sem fotos)
+function htmlResultados(dados) {
+  const cartao = (tipo) => {
+    const d = dados[tipo.coluna];
+    if (!d) return '';
+    const casas = tipo.casas ?? 2;
+    const linhas = d.itens.map(it => `
+      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+        <span style="width: 64px; font-size: 11px; font-weight: 600; color: var(--color-text-secondary); flex-shrink: 0;">${tipo.item} ${it.indice}</span>
+        ${it.medidas.map(m => `
+          <div title="${m.status} · desvio ${fmtDesvio(m.desvio)}" style="flex: 1; min-width: 0; text-align: center; padding: 4px 6px; border: 2px solid ${corStatus(m.status)}; background: ${BG_STATUS[m.status] || '#fff'}; border-radius: 6px; line-height: 1.25;">
+            <div style="font-size: 13px; font-weight: 700; color: ${corStatus(m.status)};">${fmtNum(m.valor, casas)}<span style="font-size: 10px; font-weight: 500;"> ${tipo.unidade}</span></div>
+            <div style="font-size: 9px; color: var(--color-text-secondary);">${fmtDesvio(m.desvio)}</div>
+          </div>`).join('')}
+      </div>`).join('');
+    return `
+      <div class="card" style="padding: 10px 12px; margin: 0;">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid var(--color-border-light);">
+          <span style="font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: .3px; color: var(--color-primary);">${tipo.nome}</span>
+          <span style="font-size: 11px; color: var(--color-text-secondary);">${tipo.rotuloPadrao}: ${fmtNum(d.padrao, casas)} ${tipo.unidade}</span>
+        </div>
+        ${linhas}
+      </div>`;
   };
-  const nPontos = dados.itens[0]?.medidas.length || 1;
-  return `
-    <div style="margin-bottom: var(--space-4);">
-      <div style="font-weight: 700; margin-bottom: 4px;">${tipo.nome} <span style="font-weight: 400; font-size: var(--font-size-xs); color: var(--color-text-secondary);">(${tipo.unidade}) · ${tipo.rotuloPadrao}: ${fmtNum(dados.padrao, casas)}</span></div>
-      <table class="table table-compact">
-        <thead><tr><th style="padding: 4px 8px;">${tipo.item}</th>${Array.from({ length: nPontos }, (_, i) => `<th style="padding: 4px 8px;">${tipo.nome} ${nPontos > 1 ? i + 1 : ''}</th>`).join('')}</tr></thead>
-        <tbody>${dados.itens.map(it => `<tr><td style="padding: 4px 8px; font-weight: 600;">${tipo.item} ${it.indice}</td>${it.medidas.map(celula).join('')}</tr>`).join('')}</tbody>
-      </table>
-    </div>`;
+  return `<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: var(--space-3);">${TIPOS.map(cartao).join('')}</div>`;
+}
+
+// Aba "Fotos": miniaturas agrupadas por medida, com moldura da cor do status; clicar abre a foto inteira
+function htmlFotos(dados, urls) {
+  const miniatura = (tipo, item, m) => {
+    const cor = corStatus(m.status);
+    const rotulo = `${item.indice}${item.medidas.length > 1 ? '·' + m.ponto : ''}`;
+    const moldura = `border: 3px solid ${cor}; border-radius: 6px; background: ${BG_STATUS[m.status] || '#fff'};`;
+    const conteudo = urls[m.foto]
+      ? `<a href="${urls[m.foto]}" target="_blank" rel="noopener" style="display: block;"><img src="${urls[m.foto]}" loading="lazy" alt="Foto" style="display: block; width: 100%; height: 84px; object-fit: cover; border-radius: 3px;"></a>`
+      // Sem link = a foto já não está no Storage (removida pelo prazo de 60 dias) ou não carregou; valores/status seguem no banco
+      : `<div title="Foto indisponível: removida pelo prazo de retenção (60 dias) ou não carregou" style="height: 84px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: var(--color-text-secondary); text-align: center;">Foto<br>indisponível</div>`;
+    return `
+      <div style="width: 116px;">
+        <div style="${moldura} padding: 2px;">${conteudo}</div>
+        <div style="text-align: center; font-size: 10px; margin-top: 2px; line-height: 1.2;"><strong style="color: ${cor};">${fmtNum(m.valor, tipo.casas ?? 2)} ${tipo.unidade}</strong><br><span style="color: var(--color-text-secondary);">${tipo.item} ${rotulo}</span></div>
+      </div>`;
+  };
+  const secao = (tipo) => {
+    const d = dados[tipo.coluna];
+    if (!d) return '';
+    const itens = d.itens.flatMap(it => it.medidas.map(m => miniatura(tipo, it, m))).join('');
+    return `
+      <div style="margin-bottom: var(--space-4);">
+        <div style="font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: .3px; color: var(--color-primary); margin-bottom: 6px;">${tipo.nome}</div>
+        <div style="display: flex; flex-wrap: wrap; gap: 10px;">${itens}</div>
+      </div>`;
+  };
+  const legenda = [['OK', 'OK'], ['ALERTA', 'ALERTA'], ['PROBLEMA', 'PROBLEMA']]
+    .map(([s, t]) => `<span style="display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--color-text-secondary);"><span style="width: 10px; height: 10px; border-radius: 2px; background: ${corStatus(s)};"></span>${t}</span>`).join('');
+  return `<div style="display: flex; gap: 14px; margin-bottom: var(--space-3);">${legenda}</div>${TIPOS.map(secao).join('')}`;
 }
 
 async function abrirDetalhe(id) {
@@ -209,16 +248,10 @@ async function abrirDetalhe(id) {
     return;
   }
 
-  // Links temporários (1 h) das fotos do bucket privado, de uma vez só
-  const caminhos = TIPOS.flatMap(t => (r[t.coluna]?.itens || []).flatMap(it => it.medidas.map(m => m.foto)));
-  const urls = {};
-  const { data: assinadas, error: erroUrls } = await supabase.storage.from(BUCKET).createSignedUrls(caminhos, 3600);
-  if (erroUrls) showToast('Não foi possível carregar as fotos', 'error');
-  (assinadas || []).forEach(a => { if (a.signedUrl) urls[a.path] = a.signedUrl; });
-
   const categoriasReprovadas = r.resumo?.categorias_reprovadas || [];
+  const estiloAba = (ativa) => `padding: 6px 14px; border: none; background: transparent; font-size: var(--font-size-sm); font-weight: ${ativa ? 600 : 400}; color: ${ativa ? 'var(--color-primary)' : 'var(--color-text-secondary)'}; border-bottom: 2px solid ${ativa ? 'var(--color-primary)' : 'transparent'}; cursor: pointer;`;
   const corpo = `
-    <div style="display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: center; margin-bottom: var(--space-4);">
+    <div style="display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: center; margin-bottom: var(--space-3);">
       ${badge(r.status)}
       <span>${fmtDataHora(r.created_at)}</span>
       <span>Linha: <strong>${esc(r.linha)}</strong></span>
@@ -227,12 +260,39 @@ async function abrirDetalhe(id) {
       <span style="color: ${COR_STATUS.ALERTA};">${r.qtd_alerta} alerta</span>
       <span style="color: ${COR_STATUS.PROBLEMA};">${r.qtd_problema} problema</span>
     </div>
-    ${categoriasReprovadas.length > 0 ? `<div class="error-text" style="margin-bottom: var(--space-4); font-size: var(--font-size-sm);">Reprovado por: ${categoriasReprovadas.map(t => NOME_TIPO[t] || t).join(', ')} (2 ou mais itens com problema nessa categoria)</div>` : ''}
-    ${TIPOS.map(t => htmlTipo(t, r[t.coluna], urls)).join('')}`;
+    ${categoriasReprovadas.length > 0 ? `<div class="error-text" style="margin-bottom: var(--space-3); font-size: var(--font-size-sm);">Reprovado por: ${categoriasReprovadas.map(t => NOME_TIPO[t] || t).join(', ')} (2 ou mais itens com problema nessa categoria)</div>` : ''}
+    <div style="display: flex; gap: var(--space-2); border-bottom: 1px solid var(--color-border-light); margin-bottom: var(--space-4);">
+      <button type="button" class="rq03-aba" data-aba="resultados" style="${estiloAba(true)}">Resultados</button>
+      <button type="button" class="rq03-aba" data-aba="fotos" style="${estiloAba(false)}">Fotos</button>
+    </div>
+    <div id="rq03-aba-resultados">${htmlResultados(r)}</div>
+    <div id="rq03-aba-fotos" style="display: none;"></div>`;
 
   const rodape = `<button class="btn btn-primary btn-sm" id="rq03-baixar-pdf">Gerar PDF</button>`;
   openModal('RQ03 · Registro de Qualidade – Laminação', corpo, rodape, { maxWidth: '960px' });
   document.getElementById('rq03-baixar-pdf').addEventListener('click', (e) => gerarPdf(r.id, e.currentTarget));
+
+  // Fotos só são buscadas (links temporários de 1 h do bucket privado) quando a aba Fotos é aberta pela primeira vez
+  let fotosCarregadas = false;
+  const carregarFotos = async () => {
+    fotosCarregadas = true;
+    const painel = document.getElementById('rq03-aba-fotos');
+    painel.innerHTML = '<div style="padding: var(--space-6); text-align: center; color: var(--color-text-secondary);">Carregando fotos...</div>';
+    const caminhos = TIPOS.flatMap(t => (r[t.coluna]?.itens || []).flatMap(it => it.medidas.map(m => m.foto)));
+    const urls = {};
+    const { data: assinadas, error: erroUrls } = await supabase.storage.from(BUCKET).createSignedUrls(caminhos, 3600);
+    if (erroUrls) showToast('Não foi possível carregar as fotos', 'error');
+    (assinadas || []).forEach(a => { if (a.signedUrl) urls[a.path] = a.signedUrl; });
+    if (document.getElementById('rq03-aba-fotos') === painel) painel.innerHTML = htmlFotos(r, urls);
+  };
+
+  document.querySelectorAll('.rq03-aba').forEach(btn => btn.addEventListener('click', () => {
+    const aba = btn.dataset.aba;
+    document.querySelectorAll('.rq03-aba').forEach(b => { b.style.cssText = estiloAba(b.dataset.aba === aba); });
+    document.getElementById('rq03-aba-resultados').style.display = aba === 'resultados' ? '' : 'none';
+    document.getElementById('rq03-aba-fotos').style.display = aba === 'fotos' ? '' : 'none';
+    if (aba === 'fotos' && !fotosCarregadas) carregarFotos();
+  }));
 }
 
 // PDF do apontamento (1 página de resumo + fotos das medidas com PROBLEMA), gerado no servidor pela edge
