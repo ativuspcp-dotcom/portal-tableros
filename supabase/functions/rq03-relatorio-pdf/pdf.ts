@@ -67,15 +67,49 @@ export type Foto = {
 function fmtNum(v: number, casas: number): string {
   return Number(v).toFixed(casas).replace('.', ',');
 }
+// O servidor roda em UTC: a hora tem de ser convertida para Brasília, senão o PDF sai 3 h adiantado.
+const FORMATO_DATA_HORA = new Intl.DateTimeFormat('pt-BR', {
+  timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false,
+});
 function fmtDataHora(iso: string): string {
-  const d = new Date(iso);
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+  const partes = FORMATO_DATA_HORA.formatToParts(new Date(iso));
+  const p = (tipo: string) => partes.find((x) => x.type === tipo)?.value ?? '';
+  return `${p('day')}/${p('month')}/${p('year')} ${p('hour') === '24' ? '00' : p('hour')}:${p('minute')}`;
 }
 function statusColor(status: string) { return status === 'PROBLEMA' ? RED : status === 'ALERTA' ? AMBER : GREEN; }
 function statusBg(status: string) { return status === 'PROBLEMA' ? RED_BG : status === 'ALERTA' ? AMBER_BG : GREEN_BG; }
 
-export async function gerarPdf(rq: Record<string, any>, fotos: Foto[]): Promise<Uint8Array> {
+// ---------- não conformidades (última página) ----------
+
+type PontoProblema = { item: string; ponto: number | null; valor: number; desvio: number };
+type GrupoProblema = { tipo: (typeof TIPOS)[number]; itensComProblema: number; totalItens: number; padrao: number; pontos: PontoProblema[] };
+
+// Pontos com PROBLEMA das categorias que reprovaram (lista vazia = registro antigo sem resumo.categorias_reprovadas: todas)
+function problemasDaReprovacao(rq: Record<string, any>, reprovadas: string[]): GrupoProblema[] {
+  const grupos: GrupoProblema[] = [];
+  for (const tipo of reprovadas.length > 0 ? TIPOS.filter((t) => reprovadas.includes(t.chave)) : TIPOS) {
+    const dados = rq[tipo.coluna];
+    if (!dados) continue;
+    const pontos: PontoProblema[] = [];
+    let itensComProblema = 0;
+    for (const item of dados.itens ?? []) {
+      const ruins = (item.medidas ?? []).filter((m: any) => m.status === 'PROBLEMA');
+      if (ruins.length > 0) itensComProblema++;
+      for (const m of ruins) {
+        pontos.push({ item: `${tipo.item} ${item.indice}`, ponto: (item.medidas ?? []).length > 1 ? m.ponto : null, valor: m.valor, desvio: m.desvio });
+      }
+    }
+    if (pontos.length > 0) grupos.push({ tipo, itensComProblema, totalItens: (dados.itens ?? []).length, padrao: dados.padrao, pontos });
+  }
+  return grupos;
+}
+
+// Decisão tomada sobre uma não conformidade (qualidade_rq03_decisoes); categoria = chave do tipo (comprimento, largura…)
+export type Decisao = {
+  categoria: string; texto: string; autor_nome: string; criado_em: string; editado_em: string | null; editado_por_nome: string | null;
+};
+
+export async function gerarPdf(rq: Record<string, any>, fotos: Foto[], decisoes: Decisao[] = []): Promise<Uint8Array> {
   const pdfDoc = await PDFDocument.create();
   pdfDoc.setTitle(`RQ03 - ${rq.linha} - ${fmtDataHora(rq.created_at)}`);
   pdfDoc.setProducer('Sistema PCP Tableros');
@@ -98,6 +132,11 @@ export async function gerarPdf(rq: Record<string, any>, fotos: Foto[]): Promise<
   }
   const logoImage = logoBytes ? await pdfDoc.embedPng(logoBytes) : null;
 
+  // Não conformidades (última página): categorias que reprovaram a RQ (resumo.categorias_reprovadas, gravado pelo
+  // banco; a regra de reprovação mora só lá) com os pontos que deram PROBLEMA. Só em RQ REPROVADA.
+  const listaReprovadas: string[] = rq.resumo?.categorias_reprovadas || [];
+  const grupos = rq.status === 'REPROVADO' ? problemasDaReprovacao(rq, listaReprovadas) : [];
+
   const drawRect = (page: any, x: number, y: number, w: number, h: number, color: any) =>
     page.drawRectangle({ x, y, width: w, height: h, color });
   const drawText = (page: any, text: string, x: number, y: number, f: any, size: number, color = BLACK) =>
@@ -107,6 +146,32 @@ export async function gerarPdf(rq: Record<string, any>, fotos: Foto[]): Promise<
     drawText(page, text, xCenter - textW(f, text, size) / 2, y, f, size, color);
   const drawTextRight = (page: any, text: string, xRight: number, y: number, f: any, size: number, color = BLACK) =>
     drawText(page, text, xRight - textW(f, text, size), y, f, size, color);
+
+  // Texto digitado por pessoas (decisões): a fonte pode não ter emoji etc. — o que ela não tem vira '?'
+  const caracteresDaFonte = new Set<number>(font.getCharacterSet());
+  const limparTexto = (t: string) => Array.from(t).map((c) => (caracteresDaFonte.has(c.codePointAt(0)!) ? c : '?')).join('');
+  const quebrarTexto = (texto: string, f: any, tamanho: number, largura: number): string[] => {
+    const linhas: string[] = [];
+    for (const paragrafoBruto of texto.split(/\r?\n/)) { // separa os parágrafos ANTES de limpar (o \n não está na fonte)
+      const paragrafo = limparTexto(paragrafoBruto);
+      let atual = '';
+      for (const palavra of paragrafo.split(/\s+/).filter(Boolean)) {
+        const tentativa = atual ? `${atual} ${palavra}` : palavra;
+        if (textW(f, tentativa, tamanho) <= largura) { atual = tentativa; continue; }
+        if (atual) linhas.push(atual);
+        let resto = palavra; // palavra maior que a linha inteira: quebra por caractere
+        while (textW(f, resto, tamanho) > largura) {
+          let n = resto.length;
+          while (n > 1 && textW(f, resto.slice(0, n), tamanho) > largura) n--;
+          linhas.push(resto.slice(0, n));
+          resto = resto.slice(n);
+        }
+        atual = resto;
+      }
+      linhas.push(atual);
+    }
+    return linhas;
+  };
 
   // ---------- página 1: resumo ----------
   const page = pdfDoc.addPage([PAGE_W, PAGE_H]);
@@ -137,7 +202,9 @@ export async function gerarPdf(rq: Record<string, any>, fotos: Foto[]): Promise<
   const categorias: string[] = rq.resumo?.categorias_reprovadas || [];
   if (rq.status === 'REPROVADO' && categorias.length > 0) {
     drawRect(page, MARGIN, y - 16, CONTENT_W, 18, RED_BG);
-    const texto = `Reprovado por: ${categorias.map((c) => NOME_TIPO[c] || c).join(', ')} — 2 ou mais itens com PROBLEMA na mesma medida.`;
+    const nomes = categorias.map((c) => NOME_TIPO[c] || c).join(', ');
+    const completo = `Reprovado por: ${nomes} — 2 ou mais itens com PROBLEMA na mesma medida.`;
+    const texto = textW(fontBold, completo, 8.5) <= CONTENT_W - 12 ? completo : `Reprovado por: ${nomes} — veja as não conformidades na última página.`;
     drawText(page, texto, MARGIN + 6, y - 11, fontBold, 8.5, RED);
     y -= 26;
   }
@@ -199,6 +266,9 @@ export async function gerarPdf(rq: Record<string, any>, fotos: Foto[]): Promise<
     drawTextRight(page, 'removidas após 60 dias · pontos com PROBLEMA', MARGIN + CONTENT_W - 6, y - 12, font, 7.5, GRAY_TEXT);
     y -= 18 + 6;
 
+    if (grupos.length > 0) {
+      drawText(page, 'Os pontos com PROBLEMA estão listados na última página.', MARGIN + 6, y - 8, font, 7.5, GRAY_TEXT);
+    } else {
     const entradas = fotos.map((f) => `${f.tipoNome} · ${f.item} · Ponto ${f.ponto}: ${fmtNum(f.valor, f.casas)} ${f.unidade}`);
     const vagas = Math.max(0, Math.floor((y - (MARGIN + 16)) / linhaH)) * 2;
     const mostrar = entradas.length > vagas && vagas > 0
@@ -209,6 +279,7 @@ export async function gerarPdf(rq: Record<string, any>, fotos: Foto[]): Promise<
       const linha = Math.floor(i / 2);
       drawText(page, texto, MARGIN + 6 + coluna * (CONTENT_W / 2), y - 8 - linha * linhaH, font, 7.5, RED);
     });
+    }
   }
 
   drawText(page, `Gerado pelo Sistema PCP Tableros em ${fmtDataHora(new Date().toISOString())} — ${rq.id}`, MARGIN, MARGIN - 12, font, 7, GRAY_TEXT);
@@ -257,6 +328,85 @@ export async function gerarPdf(rq: Record<string, any>, fotos: Foto[]): Promise<
         }
       }
     }
+  }
+
+  // ---------- última página: NÃO CONFORMIDADE(S) ENCONTRADA(S) ----------
+  // Uma página só para elas (ver `grupos` acima). Registro antigo sem a lista de categorias: todos os pontos com
+  // PROBLEMA. Se não couber numa página (caso extremo), continua na seguinte.
+  if (grupos.length > 0) {
+    const LINHA_H = 14;
+    const RODAPE_Y = MARGIN + 20;
+    const colX = { item: MARGIN + 8, ponto: MARGIN + 190, medido: MARGIN + 270, desvio: MARGIN + 370 };
+    let pg = pdfDoc.addPage([PAGE_W, PAGE_H]);
+    let yy = PAGE_H - MARGIN;
+
+    const cabecalhoPagina = (continuacao: boolean) => {
+      drawText(pg, continuacao ? 'NÃO CONFORMIDADE(S) ENCONTRADA(S) — continuação' : 'NÃO CONFORMIDADE(S) ENCONTRADA(S)', MARGIN, yy - 8, fontBold, 12.5, RED);
+      drawText(pg, `RQ03 · ${rq.linha} · ${fmtDataHora(rq.created_at)} · Apontador: ${rq.responsavel_nome || '-'}`, MARGIN, yy - 23, font, 8.5, GRAY_TEXT);
+      drawRect(pg, MARGIN, yy - 32, CONTENT_W, 2, RED);
+      drawText(pg, `Gerado pelo Sistema PCP Tableros em ${fmtDataHora(new Date().toISOString())} — ${rq.id}`, MARGIN, MARGIN - 12, font, 7, GRAY_TEXT);
+      yy -= 46;
+    };
+    cabecalhoPagina(false);
+
+    drawText(pg, listaReprovadas.length > 0
+      ? 'Categorias que reprovaram esta RQ: 2 ou mais itens com PROBLEMA na mesma medida.'
+      : 'Todos os pontos com PROBLEMA deste registro.', MARGIN, yy - 2, font, 8.5, BLACK);
+    yy -= 22;
+
+    grupos.forEach((g, i) => {
+      const { tipo } = g;
+      const plural = tipo.item === 'Lâmina' ? 'lâminas' : 'roletes';
+      const cabecalhoGrupo = (continuacao: boolean) => {
+        drawRect(pg, MARGIN, yy - 20, CONTENT_W, 20, RED_BG);
+        drawText(pg, `NC ${i + 1} · ${tipo.nome.toUpperCase()}${continuacao ? ' (continuação)' : ''}`, MARGIN + 8, yy - 14, fontBold, 9.5, RED);
+        drawTextRight(pg, `${g.itensComProblema} de ${g.totalItens} ${plural} com problema · ${tipo.rotulo.toLowerCase()} ${fmtNum(g.padrao, tipo.casas)} ${tipo.unidade}`, MARGIN + CONTENT_W - 8, yy - 14, font, 8.5, GRAY_TEXT);
+        yy -= 20;
+        drawText(pg, tipo.item.toUpperCase(), colX.item, yy - 10, fontBold, 7, GRAY_TEXT);
+        drawText(pg, 'PONTO', colX.ponto, yy - 10, fontBold, 7, GRAY_TEXT);
+        drawText(pg, 'MEDIDO', colX.medido, yy - 10, fontBold, 7, GRAY_TEXT);
+        drawText(pg, `DESVIO DO ${tipo.rotulo.toUpperCase()}`, colX.desvio, yy - 10, fontBold, 7, GRAY_TEXT);
+        yy -= 14;
+      };
+
+      // Não deixa o título do grupo sozinho no pé da página
+      if (yy - (20 + 14 + LINHA_H * 2) < RODAPE_Y) { pg = pdfDoc.addPage([PAGE_W, PAGE_H]); yy = PAGE_H - MARGIN; cabecalhoPagina(true); }
+      cabecalhoGrupo(false);
+      g.pontos.forEach((p, k) => {
+        if (yy - LINHA_H < RODAPE_Y) { pg = pdfDoc.addPage([PAGE_W, PAGE_H]); yy = PAGE_H - MARGIN; cabecalhoPagina(true); cabecalhoGrupo(true); }
+        if (k % 2 === 1) drawRect(pg, MARGIN, yy - LINHA_H + 2, CONTENT_W, LINHA_H, GRAY_BG);
+        drawText(pg, p.item, colX.item, yy - 9, font, 8.5, BLACK);
+        drawText(pg, p.ponto ? String(p.ponto) : '-', colX.ponto, yy - 9, font, 8.5, BLACK);
+        drawText(pg, `${fmtNum(p.valor, tipo.casas)} ${tipo.unidade}`, colX.medido, yy - 9, fontBold, 8.5, RED);
+        drawText(pg, `${p.desvio > 0 ? '+' : ''}${fmtNum(p.desvio, tipo.casas)} ${tipo.unidade}`, colX.desvio, yy - 9, font, 8.5, BLACK);
+        yy -= LINHA_H;
+      });
+
+      // DECISÕES TOMADAS sobre esta NC (só se existirem)
+      const decisoesDaNc = decisoes.filter((d) => d.categoria === tipo.chave);
+      if (decisoesDaNc.length > 0) {
+        const garantirEspaco = (altura: number) => {
+          if (yy - altura < RODAPE_Y) { pg = pdfDoc.addPage([PAGE_W, PAGE_H]); yy = PAGE_H - MARGIN; cabecalhoPagina(true); }
+        };
+        garantirEspaco(40);
+        yy -= 6;
+        drawText(pg, 'DECISÕES TOMADAS', colX.item, yy - 8, fontBold, 8, BRAND);
+        yy -= 14;
+        for (const d of decisoesDaNc) {
+          const editada = d.editado_em ? ` · editada por ${limparTexto(d.editado_por_nome || '-')} em ${fmtDataHora(d.editado_em)}` : '';
+          garantirEspaco(11 + 11);
+          drawText(pg, `${limparTexto(d.autor_nome)} · ${fmtDataHora(d.criado_em)}${editada}`, colX.item, yy - 8, fontBold, 7.5, GRAY_TEXT);
+          yy -= 11;
+          for (const linha of quebrarTexto(d.texto, font, 8.5, CONTENT_W - 16)) {
+            garantirEspaco(11);
+            drawText(pg, linha, colX.item, yy - 8, font, 8.5, BLACK);
+            yy -= 11;
+          }
+          yy -= 5;
+        }
+      }
+      yy -= 14;
+    });
   }
 
   return pdfDoc.save();
