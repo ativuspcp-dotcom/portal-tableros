@@ -11,7 +11,10 @@ const PAGE_SIZE = 50;
 const BUCKET = 'qualidade-fotos';
 const hoje = () => new Date().toISOString().split('T')[0];
 
-const estado = { inicio: hoje(), fim: hoje(), status: '', pagina: 0, temMais: true, buscando: false, linhas: [] };
+// "linhas" (plural) = as linhas da tabela carregadas; "linhaFiltro"/"opcoesLinha" = linha de laminação
+// (CHINÊS 8' / CHINÊS 4', tabela pcp_laminadoras) — nomes de propósito diferentes, cuidado ao não confundir.
+const estado = { inicio: hoje(), fim: hoje(), status: '', linhaFiltro: '', pagina: 0, temMais: true, buscando: false, linhas: [] };
+let opcoesLinha = [];
 
 const STATUS_BADGE = { OK: 'badge-green', ALERTA: 'badge-yellow', PROBLEMA: 'badge-red' };
 const badge = (s) => `<span class="badge ${STATUS_BADGE[s] || 'badge-gray'}">${s}</span>`;
@@ -46,13 +49,14 @@ async function buscar(maisUma = false) {
     const fim = new Date(`${estado.fim}T23:59:59.999`).toISOString();
     let query = supabase
       .from('qualidade_laminacao_rq03')
-      .select('id, created_at, responsavel_nome, status, qtd_ok, qtd_alerta, qtd_problema')
+      .select('id, created_at, linha, responsavel_nome, status, qtd_ok, qtd_alerta, qtd_problema')
       .eq('bpl_id', getBPLID())
       .gte('created_at', inicio)
       .lte('created_at', fim)
       .order('created_at', { ascending: false })
       .range(estado.pagina * PAGE_SIZE, (estado.pagina + 1) * PAGE_SIZE - 1);
     if (estado.status) query = query.eq('status', estado.status);
+    if (estado.linhaFiltro) query = query.eq('linha', estado.linhaFiltro);
 
     const { data, error } = await query;
     if (error) throw error;
@@ -69,10 +73,11 @@ async function buscar(maisUma = false) {
 
 function htmlLista() {
   const corpo = estado.linhas.length === 0
-    ? `<tr><td colspan="7" style="text-align: center; padding: var(--space-8); color: var(--color-text-secondary);">Nenhum registro encontrado para estes filtros.</td></tr>`
+    ? `<tr><td colspan="8" style="text-align: center; padding: var(--space-8); color: var(--color-text-secondary);">Nenhum registro encontrado para estes filtros.</td></tr>`
     : estado.linhas.map(r => `
         <tr>
           <td style="padding: 2px 8px; white-space: nowrap;">${fmtDataHora(r.created_at)}</td>
+          <td style="padding: 2px 8px; font-weight: 600;">${esc(r.linha)}</td>
           <td style="padding: 2px 8px;">${esc(r.responsavel_nome)}</td>
           <td style="padding: 2px 8px; text-align: center;">${badge(r.status)}</td>
           <td style="padding: 2px 8px; text-align: center; color: ${COR_STATUS.OK}; font-weight: 600;">${r.qtd_ok}</td>
@@ -94,6 +99,13 @@ function htmlLista() {
           <input type="date" id="rq03-fim" class="form-input" style="height: 34px; width: 140px; font-size: var(--font-size-sm);" value="${estado.fim}">
         </div>
         <div style="display: flex; flex-direction: column; gap: 4px;">
+          <label style="font-size: var(--font-size-xs); font-weight: 500; color: var(--color-text-secondary);">Linha</label>
+          <select id="rq03-linha" class="form-input" style="height: 34px; width: 140px; font-size: var(--font-size-sm);">
+            <option value="">Todas</option>
+            ${opcoesLinha.map(l => `<option value="${esc(l)}" ${estado.linhaFiltro === l ? 'selected' : ''}>${esc(l)}</option>`).join('')}
+          </select>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 4px;">
           <label style="font-size: var(--font-size-xs); font-weight: 500; color: var(--color-text-secondary);">Status</label>
           <select id="rq03-status" class="form-input" style="height: 34px; width: 140px; font-size: var(--font-size-sm);">
             ${['', 'OK', 'ALERTA', 'PROBLEMA'].map(s => `<option value="${s}" ${estado.status === s ? 'selected' : ''}>${s || 'Todos'}</option>`).join('')}
@@ -107,7 +119,7 @@ function htmlLista() {
       <div class="table-container">
         <table class="table table-compact">
           <thead><tr>
-            ${th('Data/Hora')}${th('Apontador')}${th('Status', 'text-align: center;')}${th('OK', 'text-align: center;')}${th('Alerta', 'text-align: center;')}${th('Problema', 'text-align: center;')}${th('', 'text-align: right;')}
+            ${th('Data/Hora')}${th('Linha')}${th('Apontador')}${th('Status', 'text-align: center;')}${th('OK', 'text-align: center;')}${th('Alerta', 'text-align: center;')}${th('Problema', 'text-align: center;')}${th('', 'text-align: right;')}
           </tr></thead>
           <tbody>${corpo}</tbody>
         </table>
@@ -127,6 +139,7 @@ export async function montarRq03Laminacao(el) {
     estado.inicio = document.getElementById('rq03-inicio').value || hoje();
     estado.fim = document.getElementById('rq03-fim').value || hoje();
     estado.status = document.getElementById('rq03-status').value;
+    estado.linhaFiltro = document.getElementById('rq03-linha').value;
     const btn = document.getElementById('rq03-pesquisar');
     btn.disabled = true;
     btn.textContent = 'Pesquisando...';
@@ -142,6 +155,14 @@ export async function montarRq03Laminacao(el) {
   }
 
   el.innerHTML = '<div class="card" style="padding: var(--space-8); text-align: center; color: var(--color-text-secondary);">Carregando...</div>';
+  try {
+    const { data, error } = await supabase.from('pcp_laminadoras').select('nome').eq('bpl_id', getBPLID()).eq('ativo', true).order('nome');
+    if (error) throw error;
+    opcoesLinha = (data || []).map(l => l.nome);
+  } catch (err) {
+    console.error('Erro ao carregar linhas de laminação:', err);
+    opcoesLinha = [];
+  }
   await buscar();
   desenhar();
 }
@@ -175,7 +196,7 @@ function htmlTipo(tipo, dados, urls) {
 async function abrirDetalhe(id) {
   const { data: r, error } = await supabase
     .from('qualidade_laminacao_rq03')
-    .select('id, created_at, responsavel_nome, status, qtd_ok, qtd_alerta, qtd_problema, comprimento, largura, espessura, esquadro, temperatura_roletes')
+    .select('id, created_at, linha, responsavel_nome, status, qtd_ok, qtd_alerta, qtd_problema, comprimento, largura, espessura, esquadro, temperatura_roletes')
     .eq('id', id)
     .single();
   if (error || !r) {
@@ -194,6 +215,7 @@ async function abrirDetalhe(id) {
     <div style="display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: center; margin-bottom: var(--space-4);">
       ${badge(r.status)}
       <span>${fmtDataHora(r.created_at)}</span>
+      <span>Linha: <strong>${esc(r.linha)}</strong></span>
       <span>Apontador: <strong>${esc(r.responsavel_nome)}</strong></span>
       <span style="color: ${COR_STATUS.OK};">${r.qtd_ok} OK</span>
       <span style="color: ${COR_STATUS.ALERTA};">${r.qtd_alerta} alerta</span>
