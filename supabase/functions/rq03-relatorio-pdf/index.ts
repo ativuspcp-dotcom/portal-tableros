@@ -70,9 +70,16 @@ Deno.serve(async (req) => {
     for (const foto of fotos) {
       try {
         const { data: blob, error: erroFoto } = await supabase.storage.from(BUCKET).download(foto.caminho);
-        if (erroFoto || !blob) continue;
+        if (erroFoto || !blob) {
+          // O Storage responde "não encontrado" para arquivo removido pelo prazo de 60 dias; outra falha é erro
+          foto.estado = /not.?found|não encontrad|does not exist/i.test(String((erroFoto as any)?.message ?? '')) ? 'expirada' : 'erro';
+          if (foto.estado === 'erro') console.error('Erro ao baixar foto', foto.caminho, erroFoto);
+          continue;
+        }
         foto.bytes = new Uint8Array(await blob.arrayBuffer());
+        foto.estado = 'ok';
       } catch (err) {
+        foto.estado = 'erro';
         console.error('Falha ao baixar foto', foto.caminho, err);
       }
     }

@@ -59,6 +59,9 @@ const NOME_TIPO: Record<string, string> = Object.fromEntries(TIPOS.map((t) => [t
 export type Foto = {
   tipoNome: string; item: string; ponto: number; valor: number; casas: number; unidade: string; padrao: number;
   caminho: string; bytes: Uint8Array | null;
+  // 'expirada' = o Storage respondeu que o arquivo não existe (removido pelo prazo de 60 dias);
+  // 'erro' = falha ao baixar (rede/permissão) — não é expiração e não deve ser rotulada como tal.
+  estado?: 'ok' | 'expirada' | 'erro';
 };
 
 function fmtNum(v: number, casas: number): string {
@@ -184,6 +187,28 @@ export async function gerarPdf(rq: Record<string, any>, fotos: Foto[]): Promise<
       y -= rowH;
     }
     y -= 6;
+  }
+
+  // Todas as fotos dos pontos com PROBLEMA já foram removidas (prazo de 60 dias): em vez de sumir com as
+  // páginas de fotos sem explicação, a página 1 traz a caixa FOTOS EXPIRADAS e a lista desses pontos.
+  if (fotos.length > 0 && fotos.every((f) => f.estado === 'expirada')) {
+    const linhaH = 11;
+    y -= 2;
+    drawRect(page, MARGIN, y - 18, CONTENT_W, 18, GRAY_BG);
+    drawText(page, 'FOTOS EXPIRADAS', MARGIN + 6, y - 12, fontBold, 8.5, GRAY_TEXT);
+    drawTextRight(page, 'removidas após 60 dias · pontos com PROBLEMA', MARGIN + CONTENT_W - 6, y - 12, font, 7.5, GRAY_TEXT);
+    y -= 18 + 6;
+
+    const entradas = fotos.map((f) => `${f.tipoNome} · ${f.item} · Ponto ${f.ponto}: ${fmtNum(f.valor, f.casas)} ${f.unidade}`);
+    const vagas = Math.max(0, Math.floor((y - (MARGIN + 16)) / linhaH)) * 2;
+    const mostrar = entradas.length > vagas && vagas > 0
+      ? [...entradas.slice(0, vagas - 1), `+ ${entradas.length - (vagas - 1)} pontos com PROBLEMA`]
+      : entradas.slice(0, vagas);
+    mostrar.forEach((texto, i) => {
+      const coluna = i % 2;
+      const linha = Math.floor(i / 2);
+      drawText(page, texto, MARGIN + 6 + coluna * (CONTENT_W / 2), y - 8 - linha * linhaH, font, 7.5, RED);
+    });
   }
 
   drawText(page, `Gerado pelo Sistema PCP Tableros em ${fmtDataHora(new Date().toISOString())} — ${rq.id}`, MARGIN, MARGIN - 12, font, 7, GRAY_TEXT);
