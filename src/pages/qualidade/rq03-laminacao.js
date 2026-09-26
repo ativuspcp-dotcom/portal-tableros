@@ -281,9 +281,21 @@ async function abrirDetalhe(id) {
     const caminhos = TIPOS.flatMap(t => (r[t.coluna]?.itens || []).flatMap(it => it.medidas.map(m => m.foto)));
     const urls = {};
     const { data: assinadas, error: erroUrls } = await supabase.storage.from(BUCKET).createSignedUrls(caminhos, 3600);
-    if (erroUrls) showToast('Não foi possível carregar as fotos', 'error');
     (assinadas || []).forEach(a => { if (a.signedUrl) urls[a.path] = a.signedUrl; });
-    if (document.getElementById('rq03-aba-fotos') === painel) painel.innerHTML = htmlFotos(r, urls);
+    if (document.getElementById('rq03-aba-fotos') !== painel) return; // pop-up já foi fechado/trocado
+    if (erroUrls) {
+      // Falha ao pedir os links (rede/permissão) não é expiração: deixa tentar de novo ao reabrir a aba
+      fotosCarregadas = false;
+      painel.innerHTML = '<div class="error-text" style="padding: var(--space-6); text-align: center;">Não foi possível carregar as fotos. Feche e abra o registro para tentar de novo.</div>';
+      return;
+    }
+    // Nenhuma foto existe mais no Storage = todas passaram do prazo de retenção (60 dias): só o aviso, sem grade vazia
+    painel.innerHTML = Object.keys(urls).length === 0
+      ? `<div style="padding: var(--space-8) var(--space-4); text-align: center;">
+           <div style="display: inline-block; padding: 10px 22px; border: 2px dashed var(--color-border); border-radius: 8px; font-weight: 700; letter-spacing: 1px; color: var(--color-text-secondary);">FOTOS EXPIRADAS</div>
+           <div style="margin-top: 10px; font-size: var(--font-size-xs); color: var(--color-text-secondary);">As fotos são removidas após 60 dias. Os valores e os resultados continuam na aba Resultados.</div>
+         </div>`
+      : htmlFotos(r, urls);
   };
 
   document.querySelectorAll('.rq03-aba').forEach(btn => btn.addEventListener('click', () => {
